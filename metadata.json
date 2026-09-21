@@ -1,0 +1,7 @@
+{
+  "name": "FedEx Global Logistics",
+  "description": "FedEx Global Logistics — Enterprise heavy equipment, global air cargo fleet, automated superhubs, and worldwide freight tracking platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
