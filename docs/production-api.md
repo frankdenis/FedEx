@@ -45,3 +45,20 @@
 - `VITE_API_BASE_URL` when API and frontend are deployed separately.
 - Payment provider credentials before commercial checkout is enabled.
 - Carrier/rating/label provider credentials before operational labels/rates are enabled.
+
+
+## Payment flow
+
+1. Authenticated customer creates a shipment with paymentStatus Pending.
+2. The API creates a Stripe Checkout Session using the server-stored shipment amount.
+3. The browser is redirected to Stripe; payment credentials never pass through the React application.
+4. Stripe calls POST /api/payments/webhook.
+5. The server verifies the Stripe signature before processing the event.
+6. Only a verified successful Checkout event changes the shipment to paymentStatus Paid.
+7. Payment reference and paid timestamp are persisted and audited.
+
+Required server environment:
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+
+Do not mark a shipment Paid from the client. Configure the Stripe webhook endpoint before enabling production checkout.
