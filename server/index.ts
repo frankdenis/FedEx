@@ -24,6 +24,18 @@ function limitRequests(req: express.Request, res: express.Response, next: expres
 }
 
 app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  const allowedOrigin = process.env.CORS_ORIGIN;
+  if (allowedOrigin) res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  return next();
+});
 app.use(limitRequests);
 
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -32,6 +44,10 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
   if (!signature) return res.status(400).json({ error: 'Missing payment signature.' });
   try {
     const event = stripe.webhooks.constructEvent(req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    const eventRef = db.collection('stripeEvents').doc(event.id);
+    const priorEvent = await eventRef.get();
+    if (priorEvent.exists) return res.json({ received: true, duplicate: true });
+    await eventRef.set({ receivedAt: FieldValue.serverTimestamp(), type: event.type });
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const shipmentId = session.metadata?.shipmentId;
@@ -131,9 +147,13 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
       events: [{ id: randomUUID(), status: 'Shipment Created', location: req.body.sender.city, timestamp: now, description: 'Shipment record created. Awaiting payment and operational processing.' }],
       routeWaypoints: [], assignedFacility: null, assignedDriver: null, cost, paymentStatus: 'Pending', currency: String(rate.currency || 'USD').toUpperCase(), rateId: rates.docs[0].id
     };
+    const existingKey = await db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey).get();
+    if (existingKey.exists) return res.status(200).json(existingKey.data()!.response);
     const doc = await db.collection('shipments').add(shipment);
+    const response = { id: doc.id, ...shipment };
+    await db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey).set({ response, createdAt: FieldValue.serverTimestamp() });
     await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.created', shipmentNumber: trackingNumber, details: 'Shipment record created through authenticated API.', timestamp: FieldValue.serverTimestamp() });
-    return res.status(201).json({ id: doc.id, ...shipment });
+    return res.status(201).json(response);
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid shipment request.' });
   }
@@ -142,6 +162,8 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
 app.post('/api/payments/checkout', requireAuth, async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Payment provider is not configured.' });
   const { shipmentId } = req.body;
+  const idempotencyKey = req.header('Idempotency-Key');
+  if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return res.status(400).json({ error: 'A valid Idempotency-Key is required.' });
   if (typeof shipmentId !== 'string' || !shipmentId.trim()) return res.status(400).json({ error: 'shipmentId is required.' });
   if (!appBaseUrl) return res.status(503).json({ error: 'Application base URL is not configured.' });
   const shipmentRef = db.collection('shipments').doc(shipmentId);
