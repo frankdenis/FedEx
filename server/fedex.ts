@@ -61,6 +61,21 @@ function toParty(address: any) {
   };
 }
 
+function resolveServiceType(service: string): string {
+  const key = service.toUpperCase();
+  const envKey = key === 'EXPRESS'
+    ? 'FEDEX_SERVICE_EXPRESS'
+    : key === 'PRIORITY'
+      ? 'FEDEX_SERVICE_PRIORITY'
+      : key === 'STANDARD'
+        ? 'FEDEX_SERVICE_STANDARD'
+        : '';
+  if (!envKey) throw new Error('This service tier is not mapped to a FedEx Ship API service.');
+  const value = process.env[envKey]?.trim();
+  if (!value) throw new Error('FedEx service mapping is not configured for ' + service + '.');
+  return value;
+}
+
 export async function createFedexShipment(input: {
   sender: any;
   recipient: any;
@@ -74,11 +89,12 @@ export async function createFedexShipment(input: {
   if (!fedexConfigured() || !process.env.FEDEX_ACCOUNT_NUMBER) {
     throw new Error('FedEx shipping credentials are not configured.');
   }
+  const serviceType = resolveServiceType(input.service);
   const response = await fedexRequest<any>('/ship/v1/shipments', {
     requestedShipment: {
       shipDatestamp: input.shipDate || new Date().toISOString().slice(0, 10),
       pickupType: 'USE_SCHEDULED_PICKUP',
-      serviceType: input.service,
+      serviceType,
       packagingType: 'YOUR_PACKAGING',
       totalWeight: Number(input.packageInfo.weight),
       shipper: toParty(input.sender),
@@ -86,6 +102,14 @@ export async function createFedexShipment(input: {
       totalDeclaredValue: {
         amount: Number(input.declaredValue || 0),
         currency: input.currency,
+      },
+      shippingChargesPayment: {
+        paymentType: 'SENDER',
+        payor: {
+          responsibleParty: {
+            accountNumber: { value: process.env.FEDEX_ACCOUNT_NUMBER },
+          },
+        },
       },
       requestedPackageLineItems: [{
         weight: { units: 'KG', value: Number(input.packageInfo.weight) },
