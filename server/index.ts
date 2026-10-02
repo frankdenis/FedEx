@@ -219,21 +219,52 @@ app.get('/api/shipments/:trackingNumber', async (req, res) => {
   const doc = snapshot.docs[0];
   const data = doc.data();
   return res.json({
+    id: data.trackingNumber,
     trackingNumber: data.trackingNumber,
     carrier: data.carrier || 'FedEx',
     service: data.service,
     status: data.status,
     estimatedDelivery: data.estimatedDelivery || null,
-    origin: { city: data.sender?.city || '', country: data.sender?.country || '' },
-    destination: { city: data.recipient?.city || '', country: data.recipient?.country || '' },
+    sender: {
+      name: 'Private shipper',
+      company: '',
+      address: '',
+      city: data.sender?.city || '',
+      state: '',
+      postalCode: '',
+      country: data.sender?.country || '',
+      phone: '',
+    },
+    recipient: {
+      name: 'Private recipient',
+      company: '',
+      address: '',
+      city: data.recipient?.city || '',
+      state: '',
+      postalCode: '',
+      country: data.recipient?.country || '',
+      phone: '',
+    },
+    packageInfo: {
+      type: data.packageInfo?.type || 'Parcel',
+      weight: Number(data.packageInfo?.weight || 0),
+      length: 0,
+      width: 0,
+      height: 0,
+      pieces: Number(data.packageInfo?.pieces || 1),
+      description: '',
+      declaredValue: 0,
+    },
     events: Array.isArray(data.events)
       ? data.events.map((event: any) => ({
+          id: event.id,
           status: event.status,
           location: event.location || '',
           timestamp: event.timestamp,
           description: event.description || '',
         }))
       : [],
+    routeWaypoints: [],
   });
 });
 
