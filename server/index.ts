@@ -6,7 +6,7 @@ import { requireAdmin, requireAuth } from './auth.js';
 import { assertAddress, assertPackage, assertService } from './validation.js';
 import Stripe from 'stripe';
 import { randomUUID } from 'node:crypto';
-import { fedexConfigured, fedexRequest } from './fedex.js';
+import { createFedexShipment, fedexConfigured, fedexRequest } from './fedex.js';
 
 const app = express();
 const port = Number(process.env.API_PORT || 8787);
@@ -53,12 +53,53 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
       const session = event.data.object as Stripe.Checkout.Session;
       const shipmentId = session.metadata?.shipmentId;
       if (shipmentId && session.payment_status === 'paid') {
-        await db.collection('shipments').doc(shipmentId).update({
+        const shipmentRef = db.collection('shipments').doc(shipmentId);
+        const shipmentSnapshot = await shipmentRef.get();
+        const shipment = shipmentSnapshot.exists ? shipmentSnapshot.data() : null;
+        if (!shipment) return res.json({ received: true });
+        await shipmentRef.update({
           paymentStatus: 'Paid',
           paymentProvider: 'stripe',
           paymentReference: session.payment_intent || session.id,
           paidAt: new Date().toISOString(),
+          status: 'Payment Confirmed',
         });
+        try {
+          const carrierResponse = await createFedexShipment({
+            sender: shipment.sender,
+            recipient: shipment.recipient,
+            packageInfo: shipment.packageInfo,
+            service: shipment.service,
+            currency: shipment.currency || 'USD',
+            declaredValue: shipment.packageInfo?.declaredValue,
+          });
+          const carrierOutput = carrierResponse?.output?.transactionShipments?.[0];
+          const tracking = carrierOutput?.pieceResponses?.[0]?.trackingNumber || carrierOutput?.masterTrackingNumber || null;
+          const labelUrl = carrierOutput?.pieceResponses?.[0]?.packageDocuments?.[0]?.url || null;
+          await shipmentRef.update({
+            carrier: 'FedEx',
+            carrierStatus: tracking ? 'Created' : 'Submitted',
+            carrierTrackingNumber: tracking,
+            trackingNumber: tracking,
+            labelUrl,
+            status: tracking ? 'Shipment Created' : 'Carrier Processing',
+            events: FieldValue.arrayUnion({
+              id: randomUUID(),
+              status: tracking ? 'Shipment Created' : 'Carrier Processing',
+              location: shipment.sender?.city || '',
+              timestamp: new Date().toISOString(),
+              description: tracking ? 'Shipment created with FedEx.' : 'FedEx accepted the shipment request for processing.',
+            }),
+          });
+        } catch (carrierError) {
+          await shipmentRef.update({
+            carrier: 'FedEx',
+            carrierStatus: 'Creation Failed',
+            status: 'Carrier Action Required',
+            carrierError: carrierError instanceof Error ? carrierError.message : 'FedEx shipment creation failed.',
+          });
+          await db.collection('auditLogs').add({ action: 'carrier.shipment_creation_failed', shipmentId, timestamp: FieldValue.serverTimestamp() });
+        }
         await db.collection('auditLogs').add({ action: 'payment.completed', shipmentId, paymentReference: session.payment_intent || session.id, timestamp: FieldValue.serverTimestamp() });
       }
     }
@@ -158,14 +199,13 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
     const rate = rates.docs[0].data();
     const cost = Math.round((Number(rate.baseRate) + Number(rate.perKgRate) * req.body.packageInfo.weight) * 100) / 100;
     const now = new Date().toISOString();
-    const token = randomUUID().replace(/-/g, '').toUpperCase();
-    const trackingNumber = 'FDX' + token.slice(0, 12);
-    const invoiceNumber = 'INV-' + now.slice(0, 10).replace(/-/g, '') + '-' + token.slice(12, 20);
+    const internalReference = randomUUID().replace(/-/g, '').toUpperCase();
+    const invoiceNumber = 'INV-' + now.slice(0, 10).replace(/-/g, '') + '-' + internalReference.slice(0, 8);
     const shipment = {
-      trackingNumber, invoiceNumber, ownerUid: req.user!.uid,
+      trackingNumber: null, carrierTrackingNumber: null, internalReference, invoiceNumber, ownerUid: req.user!.uid,
       sender: req.body.sender, recipient: req.body.recipient, packageInfo: req.body.packageInfo,
       service: req.body.service, status: 'Shipment Created', estimatedDelivery: null, createdAt: now,
-      events: [{ id: randomUUID(), status: 'Shipment Created', location: req.body.sender.city, timestamp: now, description: 'Shipment record created. Awaiting payment and operational processing.' }],
+      events: [{ id: randomUUID(), status: 'Awaiting Payment', location: req.body.sender.city, timestamp: now, description: 'Shipment order created. FedEx shipment creation occurs after successful payment.' }],
       routeWaypoints: [], assignedFacility: null, assignedDriver: null, cost, paymentStatus: 'Pending', currency: String(rate.currency || 'USD').toUpperCase(), rateId: rates.docs[0].id
     };
     const idempotencyKey = req.header('Idempotency-Key');
