@@ -228,7 +228,7 @@ export interface ServiceDetailInfo {
   overview: string;
   benefits: string[];
   process: { step: number; title: string; desc: string }[];
-  pricingDemo: { tier: string; transit: string; startingAt: string; features: string[] }[];
+  pricingOptions: { tier: string; transit: string; startingAt: string; features: string[] }[];
   faqs: { q: string; a: string }[];
   relatedServices: string[];
 }
