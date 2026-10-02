@@ -228,3 +228,30 @@ revoke all on public.claim_carrier_job(uuid) from public, anon, authenticated;
 revoke all on public.enqueue_carrier_job(uuid) from public, anon, authenticated;
 revoke all on public.create_shipment_idempotent(text,uuid,jsonb) from public, anon, authenticated;
 revoke all on public.claim_carrier_shipment(uuid) from public, anon, authenticated;
+
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles(id,email,first_name,last_name)
+  values (
+    new.id,
+    coalesce(new.email,''),
+    coalesce(new.raw_user_meta_data->>'first_name',''),
+    coalesce(new.raw_user_meta_data->>'last_name','')
+  )
+  on conflict (id) do update set email=excluded.email;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute procedure public.handle_new_user();
+
+revoke all on function public.handle_new_user() from public, anon, authenticated;
