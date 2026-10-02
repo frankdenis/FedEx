@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 const app = express();
 const port = Number(process.env.API_PORT || 8787);
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
-const appBaseUrl = (process.env.APP_BASE_URL || '').replace(/\\/$/, '');
+const appBaseUrl = (process.env.APP_BASE_URL || '').replace(/\/$/, '');
 const rateWindowMs = 60_000;
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
 
@@ -147,6 +147,8 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
       events: [{ id: randomUUID(), status: 'Shipment Created', location: req.body.sender.city, timestamp: now, description: 'Shipment record created. Awaiting payment and operational processing.' }],
       routeWaypoints: [], assignedFacility: null, assignedDriver: null, cost, paymentStatus: 'Pending', currency: String(rate.currency || 'USD').toUpperCase(), rateId: rates.docs[0].id
     };
+    const idempotencyKey = req.header('Idempotency-Key');
+    if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return res.status(400).json({ error: 'A valid Idempotency-Key is required.' });
     const existingKey = await db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey).get();
     if (existingKey.exists) return res.status(200).json(existingKey.data()!.response);
     const doc = await db.collection('shipments').add(shipment);
@@ -183,7 +185,7 @@ app.post('/api/payments/checkout', requireAuth, async (req, res) => {
     client_reference_id: shipmentId,
     metadata: { shipmentId, ownerUid: shipment.ownerUid },
     line_items: [{ quantity: 1, price_data: { currency: String(shipment.currency || 'usd').toLowerCase(), unit_amount: Math.round(amount * 100), product_data: { name: 'International shipment ' + shipment.trackingNumber } } }],
-  });
+  }, { idempotencyKey });
   await shipmentRef.update({ paymentSessionId: session.id, paymentProvider: 'stripe' });
   return res.json({ checkoutUrl: session.url, sessionId: session.id });
 });
@@ -194,7 +196,7 @@ app.post('/api/shipments/:trackingNumber/events', requireAuth, requireAdmin, asy
   if (snapshot.empty) return res.status(404).json({ error: 'Shipment not found.' });
   const { status, location, description, facility } = req.body;
   if (!status || !location || !description) return res.status(400).json({ error: 'status, location and description are required.' });
-  const event = { id: crypto.randomUUID(), status, location, description, facility: facility || null, timestamp: new Date().toISOString() };
+  const event = { id: randomUUID(), status, location, description, facility: facility || null, timestamp: new Date().toISOString() };
   const doc = snapshot.docs[0];
   await doc.ref.update({ status, events: FieldValue.arrayUnion(event) });
   await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.status.updated', shipmentNumber: trackingNumber, details: description, timestamp: FieldValue.serverTimestamp() });
