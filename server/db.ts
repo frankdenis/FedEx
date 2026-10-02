@@ -147,6 +147,12 @@ class Collection {
   }
 }
 
+export const FieldValue = {
+  serverTimestamp:()=>({__sentinel:'serverTimestamp'}),
+  delete:()=>({__sentinel:'delete'}),
+  increment:(value:number)=>({__sentinel:'increment',value}),
+};
+
 export const db = {
   collection:(name:string)=>new Collection(name),
   rpc: async (name:string,args:any={})=>{
