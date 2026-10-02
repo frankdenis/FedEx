@@ -42,7 +42,7 @@ export function getShipmentByTracking(trackingNumber: string): Shipment | undefi
 }
 
 export function saveShipment(_shipment: Shipment): void {
-  productionBackendRequired('shipment creation/update');
+  productionBackendRequired<void>('shipment creation/update');
 }
 
 export function updateShipmentStatus(
@@ -53,7 +53,7 @@ export function updateShipmentStatus(
   _facilityName?: string,
   _adminEmail?: string
 ): Shipment | null {
-  productionBackendRequired('server-side shipment status updates');
+  return productionBackendRequired<Shipment | null>('server-side shipment status updates');
 }
 
 // ---------------- CURRENT USER / AUTH ----------------
@@ -71,7 +71,7 @@ export function getUsers(): User[] {
 }
 
 export function saveUser(_user: User): void {
-  productionBackendRequired('user persistence');
+  productionBackendRequired<void>('user persistence');
 }
 
 export function toggleUserStatus(_userId: string): void {
@@ -84,7 +84,7 @@ export function getDrivers(): Driver[] {
 }
 
 export function saveDriver(_driver: Driver): void {
-  productionBackendRequired('driver administration');
+  productionBackendRequired<void>('driver administration');
 }
 
 export function getFacilities(): Facility[] {
@@ -92,7 +92,7 @@ export function getFacilities(): Facility[] {
 }
 
 export function saveFacility(_facility: Facility): void {
-  productionBackendRequired('facility administration');
+  productionBackendRequired<void>('facility administration');
 }
 
 // ---------------- RATES ----------------
@@ -101,11 +101,11 @@ export function getRates(): ShippingRate[] {
 }
 
 export function saveRate(_rate: ShippingRate): void {
-  productionBackendRequired('rate administration');
+  productionBackendRequired<void>('rate administration');
 }
 
 export function deleteRate(_rateId: string): void {
-  productionBackendRequired('rate administration');
+  productionBackendRequired<void>('rate administration');
 }
 
 export function calculateShippingQuote(
@@ -114,7 +114,7 @@ export function calculateShippingQuote(
   _dimensions?: { length: number; width: number; height: number },
   _declaredValue?: number
 ): { price: number; estDaysMin: number; estDaysMax: number } {
-  productionBackendRequired('live shipping-rate calculation');
+  return productionBackendRequired<{ price: number; estDaysMin: number; estDaysMax: number }>('live shipping-rate calculation');
 }
 
 // ---------------- LOCATIONS ----------------
