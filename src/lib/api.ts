@@ -1,13 +1,17 @@
-import { auth } from './firebase';
+import { supabase } from './supabase';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const user = auth.currentUser;
-  const token = user ? await user.getIdToken() : null;
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || null;
   const response = await fetch(API_BASE_URL + path, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(init.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(init.headers || {}),
+    },
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'API request failed (' + response.status + ').');
