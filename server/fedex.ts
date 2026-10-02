@@ -36,3 +36,66 @@ export async function fedexRequest<T>(path: string, payload: unknown): Promise<T
   if (!response.ok) throw new Error('FedEx API request failed with status ' + response.status + '.');
   return data as T;
 }
+
+function toParty(address: any) {
+  return {
+    address: {
+      streetLines: [address.address].filter(Boolean),
+      city: address.city,
+      stateOrProvinceCode: address.state || undefined,
+      postalCode: address.postalCode,
+      countryCode: address.country,
+      residential: false,
+    },
+    contact: {
+      personName: address.name,
+      companyName: address.company || undefined,
+      phoneNumber: address.phone,
+      emailAddress: address.email || undefined,
+    },
+  };
+}
+
+export async function createFedexShipment(input: {
+  sender: any;
+  recipient: any;
+  packageInfo: any;
+  service: string;
+  currency: string;
+  declaredValue?: number;
+  shipDate?: string;
+}) {
+  if (!fedexConfigured() || !process.env.FEDEX_ACCOUNT_NUMBER) {
+    throw new Error('FedEx shipping credentials are not configured.');
+  }
+  const response = await fedexRequest<any>('/ship/v1/shipments', {
+    requestedShipment: {
+      shipDatestamp: input.shipDate || new Date().toISOString().slice(0, 10),
+      pickupType: 'USE_SCHEDULED_PICKUP',
+      serviceType: input.service,
+      packagingType: 'YOUR_PACKAGING',
+      totalWeight: Number(input.packageInfo.weight),
+      shipper: toParty(input.sender),
+      recipients: [toParty(input.recipient)],
+      totalDeclaredValue: {
+        amount: Number(input.declaredValue || 0),
+        currency: input.currency,
+      },
+      requestedPackageLineItems: [{
+        weight: { units: 'KG', value: Number(input.packageInfo.weight) },
+        dimensions: {
+          length: Number(input.packageInfo.length || 1),
+          width: Number(input.packageInfo.width || 1),
+          height: Number(input.packageInfo.height || 1),
+          units: 'CM',
+        },
+        groupPackageCount: Number(input.packageInfo.pieces || 1),
+      }],
+    },
+    labelResponseOptions: 'URL_ONLY',
+    accountNumber: { value: process.env.FEDEX_ACCOUNT_NUMBER },
+    shipAction: 'CONFIRM',
+    version: { major: '1', minor: '1', patch: '1' },
+  });
+  return response;
+}
