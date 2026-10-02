@@ -154,7 +154,7 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
         const duplicateSession = event.data.object as Stripe.Checkout.Session;
         const duplicateShipmentId = duplicateSession.metadata?.shipmentId;
         if (duplicateShipmentId && duplicateSession.payment_status === 'paid') {
-          await ensureFedexShipment(duplicateShipmentId);
+          await enqueueCarrierJob(duplicateShipmentId);
         }
       }
       return res.json({ received: true, duplicate: true });
