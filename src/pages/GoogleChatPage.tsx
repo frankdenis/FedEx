@@ -175,7 +175,7 @@ export const GoogleChatPage: React.FC<GoogleChatPageProps> = ({ onNavigate }) =>
         text,
       },
       title: `Send Message to ${selectedSpace.displayName || 'Google Chat Space'}`,
-      description: `You are about to post this dispatch communication to your organization's Google Chat channel on behalf of ${user?.displayName || user?.email || 'your account'}.`,
+      description: `You are about to post this dispatch communication to your organization's Google Chat channel on behalf of ${(user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email) || user?.email || 'your account'}.`,
     });
   };
 
