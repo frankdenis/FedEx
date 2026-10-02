@@ -254,13 +254,7 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', o
                   Print Details
                 </button>
 
-                <button
-                  onClick={() => alert(`Simulated commercial invoice ${selectedShipment.invoiceNumber} downloaded.`)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-1.5 transition-colors shadow-xs"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Manifest
-                </button>
+                <span className="text-xs text-slate-400">Commercial invoice download requires the document service.</span>
               </div>
             </div>
 
