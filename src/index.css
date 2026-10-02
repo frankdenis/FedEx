@@ -40,3 +40,59 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+
+/* Production responsive baseline */
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  table {
+    min-width: 720px;
+  }
+
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  [role="dialog"] {
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 641px) {
+  main {
+    min-width: 0;
+  }
+}
