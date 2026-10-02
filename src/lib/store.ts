@@ -75,57 +75,14 @@ export function generateTrackingNumber(): string {
 }
 
 export function updateShipmentStatus(
-  trackingNumber: string,
-  newStatus: TrackingStatus,
-  location: string,
-  description: string,
-  facilityName?: string,
-  adminEmail: string = 'admin@fedex-logistics.com'
+  _trackingNumber: string,
+  _newStatus: TrackingStatus,
+  _location: string,
+  _description: string,
+  _facilityName?: string,
+  _adminEmail?: string
 ): Shipment | null {
-  const shipments = getShipments();
-  const index = shipments.findIndex(s => s.trackingNumber.toUpperCase() === trackingNumber.trim().toUpperCase());
-  if (index === -1) return null;
-
-  const current = shipments[index];
-  const previousStatus = current.status;
-  const newEvent: TrackingEvent = {
-    id: `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-    status: newStatus,
-    location: location || 'FedEx Memphis World Hub Gateway',
-    timestamp: new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }) + ' — ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    description: description || `Shipment status updated to ${newStatus}.`,
-    facility: facilityName,
-  };
-
-  current.status = newStatus;
-  current.events.unshift(newEvent);
-
-  shipments[index] = { ...current };
-  setItem(STORAGE_KEYS.SHIPMENTS, shipments);
-
-  // Record Audit Log
-  addAuditLog({
-    adminEmail,
-    action: 'Shipment Status Update',
-    shipmentNumber: trackingNumber,
-    details: `Status transitioned: ${previousStatus} → ${newStatus} (${location})`,
-    ip: '192.168.10.42 (Command Operations)',
-  });
-
-  // Create Customer Notification
-  addNotification({
-    userId: current.sender.email || 'all',
-    title: `Shipment ${trackingNumber} is now ${newStatus}`,
-    message: description || `Status updated at ${location}.`,
-    trackingNumber: trackingNumber,
-    type: newStatus === 'Delivered' ? 'success' : newStatus === 'Exception' ? 'alert' : 'info',
-  });
-
-  return current;
+  productionBackendRequired('server-side shipment status updates');
 }
 
 // ---------------- CURRENT USER / AUTH ----------------
@@ -137,23 +94,12 @@ export function setCurrentUser(user: User | null): void {
   currentUserSession = user;
 }
 
-export function setCurrentUser(user: User | null): void {
-  setItem(STORAGE_KEYS.CURRENT_USER, user);
-}
-
 export function getUsers(): User[] {
   return [];
 }
 
-export function saveUser(user: User): void {
-  const users = getUsers();
-  const idx = users.findIndex(u => u.id === user.id || u.email.toLowerCase() === user.email.toLowerCase());
-  if (idx >= 0) {
-    users[idx] = user;
-  } else {
-    users.push(user);
-  }
-  setItem(STORAGE_KEYS.USERS, users);
+export function saveUser(_user: User): void {
+  productionBackendRequired('user persistence');
 }
 
 export function toggleUserStatus(_userId: string): void {
