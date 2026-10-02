@@ -20,7 +20,7 @@ import {
   Maximize2,
   Radio,
 } from 'lucide-react';
-import { LOGISTICS_IMAGES } from '../data/mockData';
+import { LOGISTICS_IMAGES } from '../data/siteContent';
 import { FEDEX_EQUIPMENT_FLEET } from '../data/equipmentData';
 import { Logo } from '../components/common/Logo';
 import { EquipmentShowcase } from '../components/equipment/EquipmentShowcase';
