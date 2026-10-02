@@ -117,8 +117,6 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
       }
       return res.json({ received: true, duplicate: true });
     }
-    await eventRef.set({ receivedAt: FieldValue.serverTimestamp(), type: event.type });
-
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const shipmentId = session.metadata?.shipmentId;
@@ -144,6 +142,10 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
         });
       }
     }
+
+    // Mark the provider event processed only after all required business work succeeds.
+    // This keeps a later provider retry useful if the first delivery partially fails.
+    await eventRef.set({ receivedAt: FieldValue.serverTimestamp(), type: event.type });
     return res.json({ received: true });
   } catch {
     return res.status(400).json({ error: 'Invalid payment webhook signature.' });
