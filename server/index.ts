@@ -217,7 +217,7 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
     const doc = await db.collection('shipments').add(shipment);
     const response = { id: doc.id, ...shipment };
     await db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey).set({ response, createdAt: FieldValue.serverTimestamp() });
-    await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.created', shipmentNumber: trackingNumber, details: 'Shipment record created through authenticated API.', timestamp: FieldValue.serverTimestamp() });
+    await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.created', shipmentNumber: internalReference, details: 'Shipment record created through authenticated API.', timestamp: FieldValue.serverTimestamp() });
     return res.status(201).json(response);
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid shipment request.' });
