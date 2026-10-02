@@ -111,7 +111,9 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
 
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'fedex-logistics-api', version: '1.0.0' }));\n\napp.get('/api/carrier/status', requireAuth, (_req, res) => res.json({ configured: fedexConfigured(), provider: 'FedEx REST APIs' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'fedex-logistics-api', version: '1.0.0' }));
+
+app.get('/api/carrier/status', requireAuth, (_req, res) => res.json({ configured: fedexConfigured(), provider: 'FedEx REST APIs' }));
 
 app.post('/api/carrier/track', async (req, res) => {
   const trackingNumber = typeof req.body?.trackingNumber === 'string' ? req.body.trackingNumber.trim() : '';
