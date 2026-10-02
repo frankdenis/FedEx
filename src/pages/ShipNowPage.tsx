@@ -97,7 +97,9 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
         cost: quote.price,
       });
       setCreatedShipment(created as Shipment);
-      setCurrentStep(6);
+      const checkout = await api.createPaymentCheckout(created.id);
+      if (!checkout.checkoutUrl) throw new Error('Payment checkout could not be created.');
+      window.location.assign(checkout.checkoutUrl);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to create shipment through the production API.');
     }
