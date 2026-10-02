@@ -416,8 +416,8 @@ export const GoogleDrivePage: React.FC<GoogleDrivePageProps> = ({ onNavigate }) 
                     className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF6600]"
                   >
                     {shipments.map((s) => (
-                      <option key={s.id} value={s.trackingNumber}>
-                        {s.trackingNumber} — {s.recipient.city}, {s.recipient.country} ({s.status})
+                      <option key={s.id} value={s.trackingNumber || ""}>
+                        {s.trackingNumber || "Tracking pending"} — {s.recipient.city}, {s.recipient.country} ({s.status})
                       </option>
                     ))}
                   </select>
