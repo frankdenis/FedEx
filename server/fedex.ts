@@ -3,7 +3,11 @@ import 'dotenv/config';
 const baseUrl = (process.env.FEDEX_BASE_URL || 'https://apis.fedex.com').replace(/\/$/, '');
 let cachedToken: { accessToken: string; expiresAt: number } | null = null;
 
-export const fedexConfigured = () => Boolean(process.env.FEDEX_API_KEY && process.env.FEDEX_API_SECRET);
+export const fedexConfigured = () => Boolean(
+  process.env.FEDEX_API_KEY &&
+  process.env.FEDEX_API_SECRET &&
+  process.env.FEDEX_ACCOUNT_NUMBER
+);
 
 async function getAccessToken(): Promise<string> {
   if (!fedexConfigured()) throw new Error('FedEx carrier credentials are not configured.');
@@ -91,6 +95,19 @@ export async function createFedexShipment(input: {
   }
   const serviceType = resolveServiceType(input.service);
   const weight = Number(input.packageInfo.weight);
+  const pieces = Number(input.packageInfo.pieces || 1);
+  const length = Number(input.packageInfo.length || 1);
+  const width = Number(input.packageInfo.width || 1);
+  const height = Number(input.packageInfo.height || 1);
+
+  if (!Number.isFinite(weight) || weight <= 0) throw new Error('Shipment weight must be greater than zero.');
+  if (!Number.isInteger(pieces) || pieces < 1 || pieces > 40) {
+    throw new Error('This shipment must contain between 1 and 40 packages. Larger shipments require the asynchronous FedEx workflow.');
+  }
+  if (![length, width, height].every(value => Number.isFinite(value) && value > 0)) {
+    throw new Error('Shipment dimensions must be greater than zero.');
+  }
+
   const response = await fedexRequest<any>('/ship/v1/shipments', {
     requestedShipment: {
       shipDatestamp: input.shipDate || new Date().toISOString().slice(0, 10),
@@ -115,9 +132,9 @@ export async function createFedexShipment(input: {
       requestedPackageLineItems: [{
         weight: { units: 'KG', value: weight },
         dimensions: {
-          length: Number(input.packageInfo.length || 1),
-          width: Number(input.packageInfo.width || 1),
-          height: Number(input.packageInfo.height || 1),
+          length,
+          width,
+          height,
           units: 'CM',
         },
         groupPackageCount: Number(input.packageInfo.pieces || 1),
