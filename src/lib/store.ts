@@ -15,6 +15,7 @@ import {
   PickupRequest,
   InvoiceItem,
 } from '../types';
+import { auth, mapFirebaseUser } from './firebase';
 const STORAGE_KEYS = {
   CURRENT_USER: 'fedex_current_user_session',
 };
@@ -87,6 +88,7 @@ export function updateShipmentStatus(
 
 // ---------------- CURRENT USER / AUTH ----------------
 export function getCurrentUser(): User | null {
+  if (auth.currentUser) return mapFirebaseUser(auth.currentUser);
   return currentUserSession;
 }
 
