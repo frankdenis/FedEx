@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, Package, MapPin, Wrench, BookOpen, ArrowRight } from 'lucide-react';
 import { getShipments, getLocations } from '../../lib/store';
-import { SERVICES_CATALOG } from '../../data/mockData';
+import { SERVICES_CATALOG } from '../../data/siteContent';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
