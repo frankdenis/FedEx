@@ -261,7 +261,7 @@ app.get('/api/shipments/:trackingNumber', async (req, res) => {
           status: event.status,
           location: event.location || '',
           timestamp: event.timestamp,
-          description: event.description || '',
+          description: 'Shipment status update.',
         }))
       : [],
     routeWaypoints: [],
