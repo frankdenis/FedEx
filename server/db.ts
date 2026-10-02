@@ -42,7 +42,6 @@ const columnMap: Record<string,string> = {
   actorUid: 'actor_uid',
   actorEmail: 'actor_email',
   shipmentNumber: 'shipment_number',
-  paymentReference: 'payment_reference',
   firstName: 'first_name',
   lastName: 'last_name',
 };
@@ -99,12 +98,12 @@ class Query {
     if(this.max) q=q.limit(this.max);
     const {data,error}=await q;
     if(error) throw error;
-    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(row)))};
+    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(row), new DocumentRef(this.name, String(row.id))))};
   }
 }
 
 class DocumentSnapshot {
-  constructor(private value:any){}
+  constructor(private value:any, public readonly ref?: DocumentRef){}
   get exists(){ return !!this.value; }
   data(){ return this.value; }
 }
@@ -114,7 +113,7 @@ class DocumentRef {
   async get(){
     const {data,error}=await supabaseAdmin.from(tableName(this.name)).select('*').eq('id',this.id).maybeSingle();
     if(error) throw error;
-    return new DocumentSnapshot(decodeRow(data));
+    return new DocumentSnapshot(decodeRow(data), new DocumentRef(this.name, this.id));
   }
   async set(value:any, options?:{merge?:boolean}){
     const payload=encodeObject(value);
