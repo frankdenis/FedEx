@@ -118,7 +118,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({ mode, onNavigate }) => {
       <div className="w-full max-w-md">
         <div className="bg-white border border-slate-200 rounded-3xl shadow-xl p-6 sm:p-8">
           <div className="flex justify-center mb-7">
-            <Logo onClick={() => onNavigate('/')} />
+            <button type="button" onClick={() => onNavigate('/')}><Logo /></button>
           </div>
 
           <div className="text-center mb-7">
