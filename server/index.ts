@@ -6,6 +6,7 @@ import { requireAdmin, requireAuth } from './auth.js';
 import { assertAddress, assertPackage, assertService } from './validation.js';
 import Stripe from 'stripe';
 import { randomUUID } from 'node:crypto';
+import { fedexConfigured, fedexRequest } from './fedex.js';
 
 const app = express();
 const port = Number(process.env.API_PORT || 8787);
@@ -69,7 +70,24 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
 
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'fedex-logistics-api', version: '1.0.0' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'fedex-logistics-api', version: '1.0.0' }));\n\napp.get('/api/carrier/status', requireAuth, (_req, res) => res.json({ configured: fedexConfigured(), provider: 'FedEx REST APIs' }));
+
+app.post('/api/carrier/track', async (req, res) => {
+  const trackingNumber = typeof req.body?.trackingNumber === 'string' ? req.body.trackingNumber.trim() : '';
+  if (!fedexConfigured()) return res.status(503).json({ error: 'Official FedEx tracking is not configured.' });
+  if (!trackingNumber) return res.status(400).json({ error: 'trackingNumber is required.' });
+  try {
+    const data = await fedexRequest('/track/v1/trackingnumbers', {
+      includeDetailedScans: true,
+      trackingInfo: [{ trackingNumberInfo: { trackingNumber } }],
+    });
+    return res.json(data);
+  } catch (error) {
+    return res.status(502).json({ error: error instanceof Error ? error.message : 'Carrier tracking request failed.' });
+  }
+});
+
+
 
 app.get('/api/me', requireAuth, async (req, res) => {
   const snapshot = await db.collection('users').doc(req.user!.uid).get();
