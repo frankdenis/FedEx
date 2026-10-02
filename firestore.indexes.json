@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "shipments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shippingRates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "service", "order": "ASCENDING" },
+        { "fieldPath": "originCountry", "order": "ASCENDING" },
+        { "fieldPath": "destCountry", "order": "ASCENDING" },
+        { "fieldPath": "active", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
