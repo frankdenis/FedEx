@@ -35,7 +35,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Priority Air Transit', desc: 'Loaded into primary cargo bays on scheduled express flights with minimum ground handling.' },
       { step: 4, title: 'Accelerated Final-Mile Handover', desc: 'Delivered directly into the hands of the verified recipient with digital signature.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'What is the maximum weight for an Express package?', a: 'Individual packages can weigh up to 68 kg (150 lbs). Shipments exceeding this weight are automatically upgraded to FedEx Freight Priority.' },
       { q: 'How does customs pre-clearance work?', a: 'Our automated EDI engines send digital airway bills and commercial invoices to destination customs authorities while the aircraft is en route, clearing up to 88% of shipments prior to touchdown.' },
@@ -63,7 +63,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Multi-Modal Long Haul', desc: 'Transfer via air freight or intermodal corridors with continuous telemetry.' },
       { step: 4, title: 'In-Country Localized Delivery', desc: 'Final mile fulfillment powered by FedEx regional centers and verified carriers.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'Can FedEx calculate import duties in advance?', a: 'Yes, our shipping rate engine and API calculate landed costs including destination VAT, tariffs, and clearance fees.' },
       { q: 'What documentation is required for international parcels?', a: 'A Commercial Invoice (3 copies), standard airway bill, and certificate of origin if claiming preferential trade tariffs.' },
@@ -91,7 +91,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Final Mile Sequencing', desc: 'Dynamic AI route optimization assigning parcels into courier delivery vans.' },
       { step: 4, title: 'Doorstep Verification', desc: 'Contactless delivery with photo verification and timestamped GPS coordinates.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'Are Saturday deliveries included?', a: 'Yes, residential deliveries operate on Saturdays across all tier 1 and tier 2 cities without additional surcharges.' },
     ],
@@ -118,7 +118,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Port / Terminal Transfer', desc: 'Manage heavy crane offloading, stevedoring, and transit documentation.' },
       { step: 4, title: 'Destination Yard Delivery', desc: 'Liftgate equipped tractor delivery direct to factory floor or warehouse bay.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'What is the minimum weight for freight booking?', a: 'Freight services commence at 68 kg (150 lbs) or single/multi-pallet shipments.' },
     ],
@@ -145,7 +145,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Warehouse Pick & Pack', desc: 'Scan-verified packing ensuring 99.98% fulfillment accuracy.' },
       { step: 4, title: 'Customer Delivery Alerts', desc: 'Branded email and SMS tracking links keeping your buyers informed.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'Do you offer Shopify and WooCommerce plugins?', a: 'Yes, our ready-made plugins configure in under 5 minutes with automatic tracking number write-back.' },
     ],
@@ -172,7 +172,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Grading & Inspection', desc: 'Consignments pass through intake inspection stations for item verification.' },
       { step: 4, title: 'Restock or Disposition', desc: 'Rapid return to inventory, refurbishment center, or regional warehouse.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'Can customers return items without a home printer?', a: 'Yes, our paperless QR code system allows customers to present their phone at any service point for instant label printing.' },
     ],
@@ -199,7 +199,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Duty & Tax Disbursement', desc: 'Settle governmental fees via automated broker accounts for instant release.' },
       { step: 4, title: 'Border Release Notice', desc: 'Transmit release milestone instantly to tracking timeline and customer portal.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'What causes customs delays most frequently?', a: 'Vague cargo descriptions, missing commercial invoices, and incorrect Harmonized System (HS) codes represent over 90% of border delays.' },
     ],
@@ -226,7 +226,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Automated Pick & Pack', desc: 'Order ingestion directly triggers robotic or optimized pick sequences.' },
       { step: 4, title: 'Outbound Cross-Dock', desc: 'Immediate handoff to scheduled express line-hauls and regional distribution.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'Can I view my real-time inventory online?', a: 'Yes, our customer and B2B portals feature live stock visibility with automated reorder threshold alerts.' },
     ],
@@ -253,7 +253,7 @@ export const SERVICES_CATALOG: ServiceDetailInfo[] = [
       { step: 3, title: 'Doorstep Collection', desc: 'Driver scans packages and inspects packaging integrity on site.' },
       { step: 4, title: 'Immediate Induction', desc: 'Shipment immediately begins its transit without waiting in retail queues.' },
     ],
-    pricingDemo: [],
+    pricingOptions: [],
     faqs: [
       { q: 'How late can I schedule a same-day pickup?', a: 'Same-day pickup requests can be placed up to 2 hours before your specified closing time or 3:30 PM local time.' },
     ],
