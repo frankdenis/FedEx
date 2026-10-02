@@ -29,7 +29,7 @@ export const mapFirebaseUser = (user: FirebaseUser, role: User['role'] = 'custom
     phone: user.phoneNumber || '',
     role,
     country: '',
-    status: user.disabled ? 'suspended' : 'active',
+    status: 'active',
     createdAt: user.metadata.creationTime || new Date().toISOString(),
   };
 };
