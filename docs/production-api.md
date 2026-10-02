@@ -62,3 +62,18 @@ Required server environment:
 - STRIPE_WEBHOOK_SECRET
 
 Do not mark a shipment Paid from the client. Configure the Stripe webhook endpoint before enabling production checkout.
+
+## Carrier job processing
+
+Stripe payment webhooks only verify payment, persist the Paid state, and enqueue a durable `carrierJobs/{shipmentId}` record. They do not wait for FedEx shipment creation.
+
+A protected worker endpoint processes queued jobs:
+
+- `POST /api/internal/carrier-jobs/process`
+- Header: `x-carrier-worker-secret: $CARRIER_WORKER_SECRET`
+- Body: `{"limit":5}` (1–20)
+
+Run this endpoint from a trusted scheduler/worker in production. Each job is transactionally claimed before FedEx creation, and the shipment retains its deterministic carrier transaction ID so retries do not intentionally create a second application shipment.
+
+Required environment:
+- `CARRIER_WORKER_SECRET`
