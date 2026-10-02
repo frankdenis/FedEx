@@ -288,20 +288,20 @@ export const GoogleDrivePage: React.FC<GoogleDrivePageProps> = ({ onNavigate }) 
         <div className="flex items-center gap-3">
           {token && user ? (
             <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
-              {user.photoURL ? (
+              {user.user_metadata?.avatar_url ? (
                 <img
-                  src={user.photoURL}
-                  alt={user.displayName || 'Google User'}
+                  src={user.user_metadata?.avatar_url}
+                  alt={user.user_metadata?.full_name || user.user_metadata?.name || 'Google User'}
                   className="w-6 h-6 rounded-full ring-1 ring-[#FF6600]"
                   referrerPolicy="no-referrer"
                 />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-[#4D148C] text-white flex items-center justify-center font-bold text-[10px]">
-                  {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                  {user.user_metadata?.full_name || user.user_metadata?.name?.charAt(0) || user.email?.charAt(0) || 'U'}
                 </div>
               )}
               <div className="hidden sm:block text-left">
-                <p className="font-semibold text-white leading-tight">{user.displayName || 'Google User'}</p>
+                <p className="font-semibold text-white leading-tight">{user.user_metadata?.full_name || user.user_metadata?.name || 'Google User'}</p>
                 <p className="text-[10px] text-slate-400 leading-tight">{user.email}</p>
               </div>
               <button
