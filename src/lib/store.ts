@@ -15,7 +15,6 @@ import {
   PickupRequest,
   InvoiceItem,
 } from '../types';
-import { auth, mapFirebaseUser } from './firebase';
 // Broadcast event to notify all listening components across tabs / views
 export function notifyStoreChange() {
   if (typeof window !== 'undefined') {
@@ -58,7 +57,6 @@ export function updateShipmentStatus(
 
 // ---------------- CURRENT USER / AUTH ----------------
 export function getCurrentUser(): User | null {
-  if (auth.currentUser) return mapFirebaseUser(auth.currentUser);
   return currentUserSession;
 }
 
