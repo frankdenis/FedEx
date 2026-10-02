@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { adminAuth } from './firebaseAdmin.js';
+import { supabaseAdmin } from './supabaseAdmin.js';
 
 declare global {
   namespace Express {
@@ -13,8 +13,19 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   const header = req.header('authorization');
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required.' });
   try {
-    const decoded = await adminAuth.verifyIdToken(header.slice(7));
-    req.user = { uid: decoded.uid, email: decoded.email || '', admin: decoded.admin === true };
+    const { data, error } = await supabaseAdmin.auth.getUser(header.slice(7));
+    if (error || !data.user) return res.status(401).json({ error: 'Invalid or expired authentication token.' });
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role,email')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    if (profileError) throw profileError;
+    req.user = {
+      uid: data.user.id,
+      email: data.user.email || profile?.email || '',
+      admin: profile?.role === 'admin',
+    };
     return next();
   } catch {
     return res.status(401).json({ error: 'Invalid or expired authentication token.' });
