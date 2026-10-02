@@ -39,6 +39,93 @@ app.use((req, res, next) => {
 });
 app.use(limitRequests);
 
+async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'processing' | 'failed' | 'skipped'> {
+  const shipmentRef = db.collection('shipments').doc(shipmentId);
+  let carrierRequestId = '';
+
+  const claim = await db.runTransaction(async transaction => {
+    const snapshot = await transaction.get(shipmentRef);
+    if (!snapshot.exists) return 'skipped' as const;
+    const shipment = snapshot.data()!;
+    if (shipment.paymentStatus !== 'Paid') return 'skipped' as const;
+    if (shipment.trackingNumber || shipment.carrierStatus === 'Created') return 'created' as const;
+
+    const previousAttemptAt = shipment.carrierAttemptAt ? Date.parse(String(shipment.carrierAttemptAt)) : 0;
+    const processingIsFresh = shipment.carrierStatus === 'Processing' && previousAttemptAt > Date.now() - 10 * 60 * 1000;
+    if (processingIsFresh) return 'processing' as const;
+
+    carrierRequestId = String(shipment.carrierRequestId || ('fedex-' + shipment.internalReference));
+    transaction.update(shipmentRef, {
+      carrier: 'FedEx',
+      carrierStatus: 'Processing',
+      carrierRequestId,
+      carrierAttemptAt: new Date().toISOString(),
+      status: 'Payment Confirmed',
+      carrierErrorCode: FieldValue.delete(),
+      carrierErrorAt: FieldValue.delete(),
+    });
+    return 'claimed' as const;
+  });
+
+  if (claim === 'created' || claim === 'processing' || claim === 'skipped') return claim;
+
+  const snapshot = await shipmentRef.get();
+  if (!snapshot.exists) return 'skipped';
+  const shipment = snapshot.data()!;
+
+  try {
+    const carrierResponse = await createFedexShipment({
+      sender: shipment.sender,
+      recipient: shipment.recipient,
+      packageInfo: shipment.packageInfo,
+      service: shipment.service,
+      currency: shipment.currency || 'USD',
+      declaredValue: shipment.packageInfo?.declaredValue,
+      transactionId: carrierRequestId,
+    });
+    const carrierOutput = carrierResponse?.output?.transactionShipments?.[0];
+    const tracking = carrierOutput?.pieceResponses?.[0]?.trackingNumber || carrierOutput?.masterTrackingNumber || null;
+    const labelUrl = carrierOutput?.pieceResponses?.[0]?.packageDocuments?.[0]?.url || null;
+    const carrierJobId = carrierResponse?.output?.jobId || carrierResponse?.jobId || null;
+
+    await shipmentRef.update({
+      carrier: 'FedEx',
+      carrierStatus: tracking ? 'Created' : 'Submitted',
+      carrierTrackingNumber: tracking,
+      trackingNumber: tracking,
+      labelUrl,
+      carrierJobId,
+      carrierRequestId,
+      status: tracking ? 'Shipment Created' : 'Carrier Processing',
+      events: FieldValue.arrayUnion({
+        id: randomUUID(),
+        status: tracking ? 'Shipment Created' : 'Carrier Processing',
+        location: shipment.sender?.city || '',
+        timestamp: new Date().toISOString(),
+        description: tracking ? 'Shipment created with FedEx.' : 'FedEx accepted the shipment request for processing.',
+      }),
+    });
+    return tracking ? 'created' : 'processing';
+  } catch (carrierError) {
+    const message = carrierError instanceof Error ? carrierError.message : 'FedEx shipment creation failed.';
+    const match = message.match(/status (\\d+)/i);
+    await shipmentRef.update({
+      carrier: 'FedEx',
+      carrierStatus: 'Creation Failed',
+      status: 'Carrier Action Required',
+      carrierErrorCode: match?.[1] || 'UNKNOWN',
+      carrierErrorAt: new Date().toISOString(),
+    });
+    await db.collection('auditLogs').add({
+      action: 'carrier.shipment_creation_failed',
+      shipmentId,
+      carrierRequestId,
+      timestamp: FieldValue.serverTimestamp(),
+    });
+    return 'failed';
+  }
+}
+
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: 'Payment provider is not configured.' });
   const signature = req.header('stripe-signature');
@@ -47,16 +134,26 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
     const event = stripe.webhooks.constructEvent(req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
     const eventRef = db.collection('stripeEvents').doc(event.id);
     const priorEvent = await eventRef.get();
-    if (priorEvent.exists) return res.json({ received: true, duplicate: true });
+    if (priorEvent.exists) {
+      if (event.type === 'checkout.session.completed') {
+        const duplicateSession = event.data.object as Stripe.Checkout.Session;
+        const duplicateShipmentId = duplicateSession.metadata?.shipmentId;
+        if (duplicateShipmentId && duplicateSession.payment_status === 'paid') {
+          await ensureFedexShipment(duplicateShipmentId);
+        }
+      }
+      return res.json({ received: true, duplicate: true });
+    }
     await eventRef.set({ receivedAt: FieldValue.serverTimestamp(), type: event.type });
+
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const shipmentId = session.metadata?.shipmentId;
       if (shipmentId && session.payment_status === 'paid') {
         const shipmentRef = db.collection('shipments').doc(shipmentId);
         const shipmentSnapshot = await shipmentRef.get();
-        const shipment = shipmentSnapshot.exists ? shipmentSnapshot.data() : null;
-        if (!shipment) return res.json({ received: true });
+        if (!shipmentSnapshot.exists) return res.json({ received: true });
+
         await shipmentRef.update({
           paymentStatus: 'Paid',
           paymentProvider: 'stripe',
@@ -64,43 +161,14 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
           paidAt: new Date().toISOString(),
           status: 'Payment Confirmed',
         });
-        try {
-          const carrierResponse = await createFedexShipment({
-            sender: shipment.sender,
-            recipient: shipment.recipient,
-            packageInfo: shipment.packageInfo,
-            service: shipment.service,
-            currency: shipment.currency || 'USD',
-            declaredValue: shipment.packageInfo?.declaredValue,
-          });
-          const carrierOutput = carrierResponse?.output?.transactionShipments?.[0];
-          const tracking = carrierOutput?.pieceResponses?.[0]?.trackingNumber || carrierOutput?.masterTrackingNumber || null;
-          const labelUrl = carrierOutput?.pieceResponses?.[0]?.packageDocuments?.[0]?.url || null;
-          await shipmentRef.update({
-            carrier: 'FedEx',
-            carrierStatus: tracking ? 'Created' : 'Submitted',
-            carrierTrackingNumber: tracking,
-            trackingNumber: tracking,
-            labelUrl,
-            status: tracking ? 'Shipment Created' : 'Carrier Processing',
-            events: FieldValue.arrayUnion({
-              id: randomUUID(),
-              status: tracking ? 'Shipment Created' : 'Carrier Processing',
-              location: shipment.sender?.city || '',
-              timestamp: new Date().toISOString(),
-              description: tracking ? 'Shipment created with FedEx.' : 'FedEx accepted the shipment request for processing.',
-            }),
-          });
-        } catch (carrierError) {
-          await shipmentRef.update({
-            carrier: 'FedEx',
-            carrierStatus: 'Creation Failed',
-            status: 'Carrier Action Required',
-            carrierError: carrierError instanceof Error ? carrierError.message : 'FedEx shipment creation failed.',
-          });
-          await db.collection('auditLogs').add({ action: 'carrier.shipment_creation_failed', shipmentId, timestamp: FieldValue.serverTimestamp() });
-        }
-        await db.collection('auditLogs').add({ action: 'payment.completed', shipmentId, paymentReference: session.payment_intent || session.id, timestamp: FieldValue.serverTimestamp() });
+
+        await ensureFedexShipment(shipmentId);
+        await db.collection('auditLogs').add({
+          action: 'payment.completed',
+          shipmentId,
+          paymentReference: session.payment_intent || session.id,
+          timestamp: FieldValue.serverTimestamp(),
+        });
       }
     }
     return res.json({ received: true });
@@ -151,18 +219,21 @@ app.get('/api/shipments/:trackingNumber', async (req, res) => {
   const doc = snapshot.docs[0];
   const data = doc.data();
   return res.json({
-    id: doc.id,
     trackingNumber: data.trackingNumber,
+    carrier: data.carrier || 'FedEx',
     service: data.service,
     status: data.status,
-    estimatedDelivery: data.estimatedDelivery,
-    createdAt: data.createdAt,
-    sender: { name: 'Private shipper', company: '', address: '', city: data.sender?.city || '', state: '', postalCode: '', country: data.sender?.country || '', phone: '' },
-    recipient: { name: 'Private recipient', company: '', address: '', city: data.recipient?.city || '', state: '', postalCode: '', country: data.recipient?.country || '', phone: '' },
-    packageInfo: { type: data.packageInfo?.type || 'Parcel', weight: Number(data.packageInfo?.weight || 0), length: 0, width: 0, height: 0, pieces: Number(data.packageInfo?.pieces || 1), description: data.packageInfo?.description || '', declaredValue: 0 },
-    events: data.events || [],
-    routeWaypoints: data.routeWaypoints || [],
-    assignedFacility: data.assignedFacility || null,
+    estimatedDelivery: data.estimatedDelivery || null,
+    origin: { city: data.sender?.city || '', country: data.sender?.country || '' },
+    destination: { city: data.recipient?.city || '', country: data.recipient?.country || '' },
+    events: Array.isArray(data.events)
+      ? data.events.map((event: any) => ({
+          status: event.status,
+          location: event.location || '',
+          timestamp: event.timestamp,
+          description: event.description || '',
+        }))
+      : [],
   });
 });
 
@@ -247,10 +318,18 @@ app.post('/api/payments/checkout', requireAuth, async (req, res) => {
     cancel_url: appBaseUrl + '/dashboard?payment=cancelled',
     client_reference_id: shipmentId,
     metadata: { shipmentId, ownerUid: shipment.ownerUid },
-    line_items: [{ quantity: 1, price_data: { currency: String(shipment.currency || 'usd').toLowerCase(), unit_amount: Math.round(amount * 100), product_data: { name: 'International shipment ' + shipment.trackingNumber } } }],
+    line_items: [{ quantity: 1, price_data: { currency: String(shipment.currency || 'usd').toLowerCase(), unit_amount: Math.round(amount * 100), product_data: { name: 'International shipment ' + (shipment.trackingNumber || shipment.internalReference) } } }],
   }, { idempotencyKey });
   await shipmentRef.update({ paymentSessionId: session.id, paymentProvider: 'stripe' });
   return res.json({ checkoutUrl: session.url, sessionId: session.id });
+});
+
+app.post('/api/admin/shipments/:shipmentId/carrier-sync', requireAuth, requireAdmin, async (req, res) => {
+  const shipmentId = req.params.shipmentId.trim();
+  if (!shipmentId) return res.status(400).json({ error: 'shipmentId is required.' });
+  const result = await ensureFedexShipment(shipmentId);
+  if (result === 'skipped') return res.status(404).json({ error: 'Shipment not found or payment is not confirmed.' });
+  return res.json({ ok: true, carrierSync: result });
 });
 
 app.post('/api/shipments/:trackingNumber/events', requireAuth, requireAdmin, async (req, res) => {
