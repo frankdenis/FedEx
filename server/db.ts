@@ -128,7 +128,17 @@ class DocumentRef {
   }
   async create(value:any){ return this.set(value); }
   async update(value:any){
-    const {error}=await supabaseAdmin.from(tableName(this.name)).update(encodeObject(value)).eq('id',this.id);
+    const payload:any = {};
+    for (const [key,valueItem] of Object.entries(value || {})) {
+      if (valueItem && typeof valueItem === 'object' && (valueItem as any).__sentinel === 'arrayUnion') {
+        const current = await this.get();
+        const existing = Array.isArray(current.data()?.[key]) ? current.data()[key] : [];
+        payload[col(key)] = [...existing, ...((valueItem as any).values || []).filter((item:any)=>!existing.some((x:any)=>JSON.stringify(x)===JSON.stringify(item)))];
+      } else {
+        payload[col(key)] = encodeValue(valueItem);
+      }
+    }
+    const {error}=await supabaseAdmin.from(tableName(this.name)).update(payload).eq('id',this.id);
     if(error) throw error;
   }
 }
@@ -151,6 +161,7 @@ export const FieldValue = {
   serverTimestamp:()=>({__sentinel:'serverTimestamp'}),
   delete:()=>({__sentinel:'delete'}),
   increment:(value:number)=>({__sentinel:'increment',value}),
+  arrayUnion:(...values:any[])=>({__sentinel:'arrayUnion',values}),
 };
 
 export const db = {
