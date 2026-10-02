@@ -1,20 +1,7 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  User,
-  signOut,
-} from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { supabase } from './supabase';
+import type { User } from '@supabase/supabase-js';
 import { GoogleChatMessage, GoogleChatSpace } from '../types';
 
-// Initialize Firebase App singleton
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
-
-// Configure Google Auth Provider with Google Workspace scopes (Chat + Drive)
 export const chatScopes = [
   'https://www.googleapis.com/auth/chat.spaces',
   'https://www.googleapis.com/auth/chat.spaces.readonly',
@@ -34,76 +21,55 @@ export const driveScopes = [
 ];
 
 export const allWorkspaceScopes = [...chatScopes, ...driveScopes];
-
-const provider = new GoogleAuthProvider();
-allWorkspaceScopes.forEach((scope) => provider.addScope(scope));
-
-// In-memory token cache (NEVER stored in localStorage or sessionStorage)
 let cachedAccessToken: string | null = null;
-let isSigningIn = false;
 
-/**
- * Initializes Firebase Auth state listener and handles token lifecycle in memory.
- */
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
-      }
+  let active = true;
+  const sync = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!active) return;
+    const token = session?.provider_token || cachedAccessToken;
+    if (session?.user && token) {
+      cachedAccessToken = token;
+      onAuthSuccess?.(session.user, token);
     } else {
-      cachedAccessToken = null;
-      if (onAuthFailure) onAuthFailure();
+      onAuthFailure?.();
     }
-  });
+  };
+  void sync();
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { void sync(); });
+  return () => { active = false; subscription.unsubscribe(); };
 };
 
-/**
- * Initiates the Google Sign-In popup requesting Google Chat access.
- */
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
-  try {
-    isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to retrieve access token from Google authentication credential.');
-    }
-
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
-  } catch (error) {
-    console.error('Google Chat Auth Error:', error);
-    throw error;
-  } finally {
-    isSigningIn = false;
-  }
+  cachedAccessToken = null;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      scopes: allWorkspaceScopes.join(' '),
+      redirectTo: window.location.href,
+      queryParams: { access_type: 'offline', prompt: 'consent' },
+    },
+  });
+  if (error) throw error;
+  return null;
 };
 
-/**
- * Returns the in-memory access token.
- */
 export const getAccessToken = async (): Promise<string | null> => {
+  if (cachedAccessToken) return cachedAccessToken;
+  const { data: { session } } = await supabase.auth.getSession();
+  cachedAccessToken = session?.provider_token || null;
   return cachedAccessToken;
 };
 
-/**
- * Sign out and clear in-memory token.
- */
 export const logoutGoogle = async () => {
-  await signOut(auth);
   cachedAccessToken = null;
+  await supabase.auth.signOut();
 };
 
-/**
- * Fetches all Google Chat spaces accessible by the user.
- */
 export const listChatSpaces = async (): Promise<GoogleChatSpace[]> => {
   const token = await getAccessToken();
   if (!token) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, Package, MapPin, Wrench, BookOpen, ArrowRight } from 'lucide-react';
 import { getShipments, getLocations } from '../../lib/store';
-import { SERVICES_CATALOG } from '../../data/mockData';
+import { SERVICES_CATALOG } from '../../data/siteContent';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
   const matchedShipments = q
     ? shipments.filter(
         s =>
-          s.trackingNumber.toLowerCase().includes(q) ||
+          (s.trackingNumber || '').toLowerCase().includes(q) ||
           s.sender.city.toLowerCase().includes(q) ||
           s.recipient.city.toLowerCase().includes(q)
       )
@@ -102,7 +102,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
               <div className="space-y-1.5">
                 {matchedShipments.map(s => (
                   <button
-                    key={s.trackingNumber}
+                    key={s.id}
                     onClick={() => handleSelect(`/track?q=${s.trackingNumber}`)}
                     className="w-full p-3 rounded-xl hover:bg-slate-50 flex items-center justify-between group border border-transparent hover:border-slate-200 transition-all text-left"
                   >

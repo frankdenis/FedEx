@@ -20,7 +20,8 @@ import { FleetEquipmentPage } from './pages/FleetEquipmentPage';
 import { GoogleChatPage } from './pages/GoogleChatPage';
 import { GoogleDrivePage } from './pages/GoogleDrivePage';
 
-import { MessageSquare, Sparkles } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname || '/');
@@ -149,8 +150,18 @@ export default function App() {
       />
 
       {/* Main Routed Page Content */}
-      <main className="flex-1">
-        {renderCurrentPage()}
+      <main className="flex-1 overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={currentPath}
+            initial={{ opacity: 0, y: 10, filter: 'blur(3px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -8, filter: 'blur(2px)' }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {renderCurrentPage()}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Comprehensive Footer with Mandatory Disclaimer */}

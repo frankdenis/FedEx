@@ -62,13 +62,13 @@ export type ServiceTier = 'Express' | 'Priority' | 'Standard' | 'Freight';
 
 export interface Shipment {
   id: string;
-  trackingNumber: string;
+  trackingNumber: string | null;
   sender: AddressInfo;
   recipient: AddressInfo;
   packageInfo: PackageInfo;
   service: ServiceTier;
   status: TrackingStatus;
-  estimatedDelivery: string;
+  estimatedDelivery: string | null;
   createdAt: string;
   events: TrackingEvent[];
   routeWaypoints: RouteWaypoint[];
@@ -228,7 +228,7 @@ export interface ServiceDetailInfo {
   overview: string;
   benefits: string[];
   process: { step: number; title: string; desc: string }[];
-  pricingDemo: { tier: string; transit: string; startingAt: string; features: string[] }[];
+  pricingOptions: { tier: string; transit: string; startingAt: string; features: string[] }[];
   faqs: { q: string; a: string }[];
   relatedServices: string[];
 }

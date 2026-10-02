@@ -90,10 +90,10 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
   }, []);
 
   const allShipments = getShipments();
-  // Filter shipments for customer or show demo set
+  // Only server-backed customer shipments are displayed
   const filteredShipments = allShipments.filter(s => {
     const matchesSearch =
-      s.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.trackingNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.recipient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.recipient.city.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
@@ -111,7 +111,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
 
     addAddress({
       id: `addr_${Date.now()}`,
-      userId: currentUser?.id || 'usr_demo_customer',
+      userId: currentUser?.id || '',
       ...newAddr,
     });
     setShowAddressModal(false);
@@ -132,7 +132,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
     e.preventDefault();
     addPickupRequest({
       id: `pickup_${Date.now()}`,
-      userId: currentUser?.id || 'usr_demo_customer',
+      userId: currentUser?.id || '',
       ...newPickup,
       status: 'scheduled',
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
@@ -330,13 +330,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
                       >
                         Track
                       </button>
-                      <button
-                        onClick={() => alert(`Simulated label print for ${s.trackingNumber}`)}
-                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600"
-                        title="Print Shipping Label"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
+                      
                     </td>
                   </tr>
                 ))}
@@ -453,12 +447,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold text-slate-900">Commercial Invoices & Accounts</h2>
-            <button
-              onClick={() => alert('Simulated invoice report exported.')}
-              className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold"
-            >
-              Export CSV
-            </button>
+            <span className="text-xs text-slate-400">Export available from billing API</span>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -484,12 +473,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => alert(`Simulated PDF download for invoice ${inv.invoiceNumber}`)}
-                        className="text-cyan-700 hover:text-cyan-900 font-semibold inline-flex items-center gap-1"
-                      >
-                        <Download className="w-3.5 h-3.5" /> PDF
-                      </button>
+                      <span className="text-xs text-slate-400">PDF service required</span>
                     </td>
                   </tr>
                 ))}

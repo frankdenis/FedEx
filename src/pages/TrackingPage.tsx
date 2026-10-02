@@ -16,7 +16,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { getShipmentByTracking, getShipments } from '../lib/store';
+import { api } from '../lib/api';
 import { Shipment } from '../types';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TrackingTimeline } from '../components/tracking/TrackingTimeline';
@@ -28,67 +28,40 @@ interface TrackingPageProps {
 }
 
 export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', onNavigate }) => {
-  const [searchInput, setSearchInput] = useState(initialQuery || 'NX839204715');
+  const [searchInput, setSearchInput] = useState(initialQuery);
   const [activeShipments, setActiveShipments] = useState<Shipment[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
 
-  const sampleNumbers = ['NX839204715', 'NX839204716', 'NX839204717', 'NX839204718'];
-
-  // Load shipments based on query input
-  const executeSearch = (rawQuery: string) => {
+    // Load shipments based on query input
+  const executeSearch = async (rawQuery: string) => {
     setErrorMessage('');
-    const trimmed = rawQuery.trim();
-    if (!trimmed) {
-      setErrorMessage('Please enter a valid tracking number.');
+    const tokens = rawQuery.trim().split(/[\s,]+/).filter(Boolean);
+    if (!tokens.length) {
+      setErrorMessage('Please enter a tracking number.');
       setActiveShipments([]);
       setSelectedShipment(null);
       return;
     }
-
-    const tokens = trimmed.split(/[\s,]+/).filter(Boolean);
-    const foundList: Shipment[] = [];
-
-    tokens.forEach(tok => {
-      const match = getShipmentByTracking(tok);
-      if (match && !foundList.some(s => s.trackingNumber === match.trackingNumber)) {
-        foundList.push(match);
-      }
-    });
-
-    if (foundList.length === 0) {
-      setErrorMessage(
-        `No shipment found matching "${trimmed}". Please verify the number or test with sample NX839204715.`
-      );
+    try {
+      const results = await Promise.all(tokens.map(token => api.shipment(token)));
+      const foundList = results as Shipment[];
+      setActiveShipments(foundList);
+      setSelectedShipment(foundList[0] || null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to retrieve tracking data.');
       setActiveShipments([]);
       setSelectedShipment(null);
-    } else {
-      setActiveShipments(foundList);
-      setSelectedShipment(foundList[0]);
     }
   };
 
   useEffect(() => {
     if (initialQuery) {
       setSearchInput(initialQuery);
-      executeSearch(initialQuery);
-    } else {
-      executeSearch('NX839204715');
+      void executeSearch(initialQuery);
     }
-
-    // Real-time synchronization: if an admin updates status, update live view
-    const handleStorageUpdate = () => {
-      if (selectedShipment) {
-        const fresh = getShipmentByTracking(selectedShipment.trackingNumber);
-        if (fresh) {
-          setSelectedShipment(fresh);
-        }
-      }
-    };
-    window.addEventListener('nexora-storage-update', handleStorageUpdate);
-    return () => window.removeEventListener('nexora-storage-update', handleStorageUpdate);
   }, [initialQuery]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -132,7 +105,7 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', o
                   type="text"
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
-                  placeholder="Enter tracking number (e.g. NX839204715)"
+                  placeholder="Enter your production tracking number"
                   className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 font-mono shadow-inner"
                 />
               </div>
@@ -153,26 +126,8 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', o
               </div>
             )}
 
-            {/* Active Consignment Quick Access */}
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-400">
-              <span>Active Consignments:</span>
-              {sampleNumbers.map(num => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => {
-                    setSearchInput(num);
-                    executeSearch(num);
-                  }}
-                  className={`px-3 py-1 rounded-lg font-mono transition-colors border ${
-                    selectedShipment?.trackingNumber === num
-                      ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400'
-                      : 'bg-white/10 hover:bg-white/20 text-slate-200 border-white/10'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
+            <div className="pt-4 text-center text-xs text-slate-400">
+              Tracking results are loaded from the production API. No sample shipments are displayed.
             </div>
           </form>
         </div>
@@ -254,13 +209,7 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', o
                   Print Details
                 </button>
 
-                <button
-                  onClick={() => alert(`Simulated commercial invoice ${selectedShipment.invoiceNumber} downloaded.`)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-1.5 transition-colors shadow-xs"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Manifest
-                </button>
+                <span className="text-xs text-slate-400">Commercial invoice download requires the document service.</span>
               </div>
             </div>
 
@@ -304,7 +253,7 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', o
                   {selectedShipment.estimatedDelivery}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  Scheduled arrival by 18:00
+                  Carrier-provided delivery schedule
                 </div>
               </div>
 

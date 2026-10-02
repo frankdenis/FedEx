@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Search,
   ArrowRight,
@@ -20,7 +21,7 @@ import {
   Maximize2,
   Radio,
 } from 'lucide-react';
-import { LOGISTICS_IMAGES } from '../data/mockData';
+import { LOGISTICS_IMAGES } from '../data/siteContent';
 import { FEDEX_EQUIPMENT_FLEET } from '../data/equipmentData';
 import { Logo } from '../components/common/Logo';
 import { EquipmentShowcase } from '../components/equipment/EquipmentShowcase';
@@ -37,9 +38,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const [quickOrigin, setQuickOrigin] = useState('United States');
   const [quickDest, setQuickDest] = useState('Germany');
   const [quickWeight, setQuickWeight] = useState('5');
-  const [quickResult, setQuickResult] = useState<{ express: number; standard: number } | null>(null);
-
-  const sampleNumbers = ['NX839204715', 'NX839204716', 'NX839204717'];
 
   const handleTrackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,15 +62,72 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
   const handleQuickEstimate = (e: React.FormEvent) => {
     e.preventDefault();
-    const w = parseFloat(quickWeight) || 1;
-    setQuickResult({
-      express: Math.round(65 + w * 14.5),
-      standard: Math.round(32 + w * 5.5),
-    });
+    onNavigate(`/quote?origin=${encodeURIComponent(quickOrigin)}&destination=${encodeURIComponent(quickDest)}&weight=${encodeURIComponent(quickWeight)}`);
   };
+
+  const serviceSlides = [
+    { title: 'Express shipping', eyebrow: 'Time-critical delivery', copy: 'Move urgent documents and parcels through a priority shipping network.', image: LOGISTICS_IMAGES.heroAircraft, path: '/services/express', accent: 'from-[#4D148C]/95 via-[#4D148C]/60 to-transparent' },
+    { title: 'Global shipping', eyebrow: 'International logistics', copy: 'Coordinate cross-border shipments with tracking and customs support.', image: LOGISTICS_IMAGES.containerShip, path: '/services/international', accent: 'from-[#0b1220]/95 via-[#0b1220]/60 to-transparent' },
+    { title: 'Ground delivery', eyebrow: 'Reliable final mile', copy: 'Connect local distribution, pickup and delivery into one experience.', image: LOGISTICS_IMAGES.deliveryVan, path: '/services/domestic', accent: 'from-[#17301f]/95 via-[#17301f]/55 to-transparent' },
+    { title: 'Freight & cargo', eyebrow: 'Large-scale movement', copy: 'Plan palletized and commercial cargo movements across major corridors.', image: LOGISTICS_IMAGES.cargoFreighter, path: '/services/freight', accent: 'from-[#25112b]/95 via-[#25112b]/55 to-transparent' },
+    { title: 'Smart warehousing', eyebrow: 'Supply chain support', copy: 'Stage inventory closer to demand with connected storage and fulfillment.', image: LOGISTICS_IMAGES.distributionHub, path: '/services/warehousing', accent: 'from-[#102b36]/95 via-[#102b36]/55 to-transparent' },
+  ];
+  const [activeSlide, setActiveSlide] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setActiveSlide(current => (current + 1) % serviceSlides.length), 6000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <div className="space-y-16 sm:space-y-24">
+    <div className="relative z-20 bg-[#07030d] overflow-hidden">
+      <div className="relative h-[360px] sm:h-[430px] lg:h-[500px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSlide}
+            className="absolute inset-0"
+            initial={{ opacity: 0, scale: 1.04 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.99 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <img src={serviceSlides[activeSlide].image} alt={serviceSlides[activeSlide].title} className="w-full h-full object-cover" />
+            <div className={`absolute inset-0 bg-gradient-to-r ${serviceSlides[activeSlide].accent}`} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" />
+          </motion.div>
+        </AnimatePresence>
+
+        <div className="relative z-10 max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-end pb-12 sm:pb-16">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSlide + '-copy'}
+              initial={{ opacity: 0, x: -28 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.45 }}
+              className="max-w-2xl text-white"
+            >
+              <span className="inline-flex px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-[#FF6600] text-[11px] font-bold uppercase tracking-[0.18em]">
+                {serviceSlides[activeSlide].eyebrow}
+              </span>
+              <h2 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">{serviceSlides[activeSlide].title}</h2>
+              <p className="mt-3 text-sm sm:text-base text-white/80 max-w-xl">{serviceSlides[activeSlide].copy}</p>
+              <button onClick={() => onNavigate(serviceSlides[activeSlide].path)} className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#FF6600] hover:bg-[#e85b00] text-white text-sm font-bold shadow-xl transition-transform hover:-translate-y-0.5">
+                Explore service <ArrowRight className="w-4 h-4" />
+              </button>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="absolute z-20 bottom-5 right-4 sm:right-8 flex items-center gap-2">
+          {serviceSlides.map((slide, index) => (
+            <button key={slide.title} aria-label={`Show ${slide.title}`} onClick={() => setActiveSlide(index)} className={`h-1.5 rounded-full transition-all ${index === activeSlide ? 'w-10 bg-[#FF6600]' : 'w-5 bg-white/40 hover:bg-white/70'}`} />
+          ))}
+        </div>
+      </div>
+    </div>
+
+
       {/* HERO SECTION */}
       <section className="relative min-h-[660px] lg:min-h-[760px] flex items-center justify-center overflow-hidden bg-[#0A0414] text-white">
         {/* Full-width logistics background image with dark overlay & subtle animated route lines */}
@@ -194,23 +249,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </div>
               )}
 
-              {/* Sample tracking quick clickers */}
-              <div className="pt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span className="font-semibold text-slate-700">Quick Test:</span>
-                {sampleNumbers.map(sn => (
-                  <button
-                    key={sn}
-                    type="button"
-                    onClick={() => {
-                      setTrackingInput(sn);
-                      onNavigate(`/track?q=${sn}`);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-purple-100 hover:text-[#4D148C] text-slate-700 font-mono transition-colors text-[11px] border border-slate-200"
-                  >
-                    {sn}
-                  </button>
-                ))}
-              </div>
+              <div className="pt-2 text-[11px] text-slate-500">Enter the tracking number supplied with your shipment. Live tracking is available when carrier data is configured.</div>
             </form>
           </div>
         </div>
@@ -585,18 +624,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </button>
             </form>
 
-            {quickResult && (
-              <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 animate-in fade-in">
-                <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100 text-center">
-                  <div className="text-[10px] font-bold text-[#4D148C] uppercase">FedEx Express (2–3 Days)</div>
-                  <div className="text-lg font-extrabold text-[#4D148C] font-mono">${quickResult.express}.00</div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-center">
-                  <div className="text-[10px] font-bold text-slate-700 uppercase">FedEx Ground (5–7 Days)</div>
-                  <div className="text-lg font-extrabold text-slate-900 font-mono">${quickResult.standard}.00</div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </section>

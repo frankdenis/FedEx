@@ -1,0 +1,29 @@
+import { supabase } from './supabase';
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || null;
+  const response = await fetch(API_BASE_URL + path, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(init.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'API request failed (' + response.status + ').');
+  return payload as T;
+}
+
+export const api = {
+  health: () => request<{ ok: boolean; service: string; version: string }>('/api/health'),
+  me: () => request<{ uid: string; email: string; admin: boolean; profile: { firstName?: string; lastName?: string; phone?: string; country?: string; status?: string; createdAt?: string } | null }>('/api/me'),
+  shipments: () => request('/api/shipments'),
+  shipment: (trackingNumber: string) => request('/api/shipments/' + encodeURIComponent(trackingNumber)),
+  quote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request<{ price: number; estDaysMin: number; estDaysMax: number; currency: string; rateId: string }>('/api/quotes', { method: 'POST', body: JSON.stringify(input) }),
+  createShipment: (input: unknown, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ id: string; trackingNumber: string | null }>('/api/shipments', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input) }),
+  createPaymentCheckout: (shipmentId: string, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ checkoutUrl: string | null; sessionId: string }>('/api/payments/checkout', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ shipmentId }) }),
+};

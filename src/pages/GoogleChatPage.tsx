@@ -17,7 +17,7 @@ import {
   Clock,
   ExternalLink,
 } from 'lucide-react';
-import { User } from 'firebase/auth';
+import type { User } from '@supabase/supabase-js';
 import {
   initAuth,
   googleSignIn,
@@ -175,7 +175,7 @@ export const GoogleChatPage: React.FC<GoogleChatPageProps> = ({ onNavigate }) =>
         text,
       },
       title: `Send Message to ${selectedSpace.displayName || 'Google Chat Space'}`,
-      description: `You are about to post this dispatch communication to your organization's Google Chat channel on behalf of ${user?.displayName || user?.email || 'your account'}.`,
+      description: `You are about to post this dispatch communication to your organization's Google Chat channel on behalf of ${(user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email) || user?.email || 'your account'}.`,
     });
   };
 
@@ -280,20 +280,20 @@ export const GoogleChatPage: React.FC<GoogleChatPageProps> = ({ onNavigate }) =>
         <div className="flex items-center gap-3">
           {token && user ? (
             <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
-              {user.photoURL ? (
+              {user.user_metadata?.avatar_url ? (
                 <img
-                  src={user.photoURL}
-                  alt={user.displayName || 'Google User'}
+                  src={user.user_metadata?.avatar_url}
+                  alt={user.user_metadata?.full_name || user.user_metadata?.name || 'Google User'}
                   className="w-6 h-6 rounded-full ring-1 ring-[#FF6600]"
                   referrerPolicy="no-referrer"
                 />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-[#4D148C] text-white flex items-center justify-center font-bold text-[10px]">
-                  {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                  {user.user_metadata?.full_name || user.user_metadata?.name?.charAt(0) || user.email?.charAt(0) || 'U'}
                 </div>
               )}
               <div className="hidden sm:block text-left">
-                <p className="font-semibold text-white leading-tight">{user.displayName || 'Google User'}</p>
+                <p className="font-semibold text-white leading-tight">{user.user_metadata?.full_name || user.user_metadata?.name || 'Google User'}</p>
                 <p className="text-[10px] text-slate-400 leading-tight">{user.email}</p>
               </div>
               <button
@@ -570,7 +570,7 @@ export const GoogleChatPage: React.FC<GoogleChatPageProps> = ({ onNavigate }) =>
                       const isCurrentUser =
                         user?.email &&
                         msg.sender?.displayName &&
-                        (msg.sender.displayName === user.displayName ||
+                        (msg.sender.displayName === user.user_metadata?.full_name || user.user_metadata?.name ||
                           msg.sender.displayName === user.email);
 
                       return (

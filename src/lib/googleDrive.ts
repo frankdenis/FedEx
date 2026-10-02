@@ -187,7 +187,7 @@ Generated: ${new Date().toISOString()}
 --------------------------------------------------------------------------------
 Origin Station:      ${shipment.sender.city}, ${shipment.sender.country} (${shipment.assignedFacility || 'Memphis SuperHub (MEM)'})
 Destination Station: ${shipment.recipient.city}, ${shipment.recipient.country} (${shipment.recipient.state || 'Gateway'})
-Estimated Delivery:  ${new Date(shipment.estimatedDelivery).toUTCString()}
+Estimated Delivery:  ${shipment.estimatedDelivery ? new Date(shipment.estimatedDelivery).toUTCString() : 'Not yet provided by carrier'}
 Primary SuperHub:    Memphis World SuperHub (MEM) / Paris CDG / Guangzhou CAN
 
 2. SHIPPER / CONSIGNOR

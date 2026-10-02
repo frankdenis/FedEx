@@ -15,33 +15,6 @@ import {
   PickupRequest,
   InvoiceItem,
 } from '../types';
-import {
-  INITIAL_SHIPMENTS,
-  INITIAL_USERS,
-  INITIAL_DRIVERS,
-  INITIAL_FACILITIES,
-  INITIAL_RATES,
-  INITIAL_LOCATIONS,
-  INITIAL_TICKETS,
-  INITIAL_AUDIT_LOGS,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_SAVED_ADDRESSES,
-} from '../data/mockData';
-
-const STORAGE_KEYS = {
-  SHIPMENTS: 'nexora_shipments_v1',
-  USERS: 'nexora_users_v1',
-  CURRENT_USER: 'nexora_current_user_v1',
-  DRIVERS: 'nexora_drivers_v1',
-  FACILITIES: 'nexora_facilities_v1',
-  RATES: 'nexora_rates_v1',
-  LOCATIONS: 'nexora_locations_v1',
-  TICKETS: 'nexora_tickets_v1',
-  AUDIT_LOGS: 'nexora_audit_logs_v1',
-  NOTIFICATIONS: 'nexora_notifications_v1',
-  ADDRESSES: 'nexora_addresses_v1',
-};
-
 // Broadcast event to notify all listening components across tabs / views
 export function notifyStoreChange() {
   if (typeof window !== 'undefined') {
@@ -50,383 +23,167 @@ export function notifyStoreChange() {
   }
 }
 
-function getItem<T>(key: string, defaultValue: T): T {
-  if (typeof window === 'undefined') return defaultValue;
-  try {
-    const item = localStorage.getItem(key);
-    if (!item) {
-      localStorage.setItem(key, JSON.stringify(defaultValue));
-      return defaultValue;
-    }
-    return JSON.parse(item);
-  } catch {
-    return defaultValue;
-  }
-}
+let currentUserSession: User | null = null;
 
-function setItem<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    notifyStoreChange();
-  } catch (e) {
-    console.error('Error writing to storage', e);
-  }
+function productionBackendRequired<T = never>(operation: string): T {
+  throw new Error(`Production backend required for ${operation}.`);
 }
 
 // ---------------- SHIPMENTS ----------------
 export function getShipments(): Shipment[] {
-  return getItem<Shipment[]>(STORAGE_KEYS.SHIPMENTS, INITIAL_SHIPMENTS);
+  return [];
 }
 
 export function getShipmentByTracking(trackingNumber: string): Shipment | undefined {
   const shipments = getShipments();
   const cleaned = trackingNumber.trim().toUpperCase();
-  return shipments.find(s => s.trackingNumber.toUpperCase() === cleaned);
+  return shipments.find(s => s.trackingNumber?.toUpperCase() === cleaned);
 }
 
-export function saveShipment(shipment: Shipment): void {
-  const shipments = getShipments();
-  const index = shipments.findIndex(s => s.id === shipment.id || s.trackingNumber === shipment.trackingNumber);
-  if (index >= 0) {
-    shipments[index] = shipment;
-  } else {
-    shipments.unshift(shipment);
-  }
-  setItem(STORAGE_KEYS.SHIPMENTS, shipments);
-}
-
-export function generateTrackingNumber(): string {
-  // Format: NX followed by 9 random digits, e.g. NX839204715
-  const randomDigits = Math.floor(100000000 + Math.random() * 900000000).toString();
-  return `NX${randomDigits}`;
+export function saveShipment(_shipment: Shipment): void {
+  productionBackendRequired<void>('shipment creation/update');
 }
 
 export function updateShipmentStatus(
-  trackingNumber: string,
-  newStatus: TrackingStatus,
-  location: string,
-  description: string,
-  facilityName?: string,
-  adminEmail: string = 'admin@fedex-logistics.com'
+  _trackingNumber: string,
+  _newStatus: TrackingStatus,
+  _location: string,
+  _description: string,
+  _facilityName?: string,
+  _adminEmail?: string
 ): Shipment | null {
-  const shipments = getShipments();
-  const index = shipments.findIndex(s => s.trackingNumber.toUpperCase() === trackingNumber.trim().toUpperCase());
-  if (index === -1) return null;
-
-  const current = shipments[index];
-  const previousStatus = current.status;
-  const newEvent: TrackingEvent = {
-    id: `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-    status: newStatus,
-    location: location || 'FedEx Memphis World Hub Gateway',
-    timestamp: new Date().toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    }) + ' — ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    description: description || `Shipment status updated to ${newStatus}.`,
-    facility: facilityName,
-  };
-
-  current.status = newStatus;
-  current.events.unshift(newEvent);
-
-  shipments[index] = { ...current };
-  setItem(STORAGE_KEYS.SHIPMENTS, shipments);
-
-  // Record Audit Log
-  addAuditLog({
-    adminEmail,
-    action: 'Shipment Status Update',
-    shipmentNumber: trackingNumber,
-    details: `Status transitioned: ${previousStatus} → ${newStatus} (${location})`,
-    ip: '192.168.10.42 (Command Operations)',
-  });
-
-  // Create Customer Notification
-  addNotification({
-    userId: current.sender.email || 'all',
-    title: `Shipment ${trackingNumber} is now ${newStatus}`,
-    message: description || `Status updated at ${location}.`,
-    trackingNumber: trackingNumber,
-    type: newStatus === 'Delivered' ? 'success' : newStatus === 'Exception' ? 'alert' : 'info',
-  });
-
-  return current;
+  return productionBackendRequired<Shipment | null>('server-side shipment status updates');
 }
 
 // ---------------- CURRENT USER / AUTH ----------------
 export function getCurrentUser(): User | null {
-  return getItem<User | null>(STORAGE_KEYS.CURRENT_USER, INITIAL_USERS[0]); // Defaults to customer Sarah Jenkins for seamless test drive
+  return currentUserSession;
 }
 
 export function setCurrentUser(user: User | null): void {
-  setItem(STORAGE_KEYS.CURRENT_USER, user);
+  currentUserSession = user;
 }
 
 export function getUsers(): User[] {
-  return getItem<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+  return [];
 }
 
-export function saveUser(user: User): void {
-  const users = getUsers();
-  const idx = users.findIndex(u => u.id === user.id || u.email.toLowerCase() === user.email.toLowerCase());
-  if (idx >= 0) {
-    users[idx] = user;
-  } else {
-    users.push(user);
-  }
-  setItem(STORAGE_KEYS.USERS, users);
+export function saveUser(_user: User): void {
+  productionBackendRequired<void>('user persistence');
 }
 
-export function toggleUserStatus(userId: string): void {
-  const users = getUsers();
-  const user = users.find(u => u.id === userId);
-  if (user) {
-    user.status = user.status === 'active' ? 'suspended' : 'active';
-    setItem(STORAGE_KEYS.USERS, users);
-  }
+export function toggleUserStatus(_userId: string): void {
+  productionBackendRequired('user administration');
 }
 
 // ---------------- DRIVERS & FACILITIES ----------------
 export function getDrivers(): Driver[] {
-  return getItem<Driver[]>(STORAGE_KEYS.DRIVERS, INITIAL_DRIVERS);
+  return [];
 }
 
-export function saveDriver(driver: Driver): void {
-  const drivers = getDrivers();
-  const idx = drivers.findIndex(d => d.id === driver.id);
-  if (idx >= 0) {
-    drivers[idx] = driver;
-  } else {
-    drivers.push(driver);
-  }
-  setItem(STORAGE_KEYS.DRIVERS, drivers);
+export function saveDriver(_driver: Driver): void {
+  productionBackendRequired<void>('driver administration');
 }
 
 export function getFacilities(): Facility[] {
-  return getItem<Facility[]>(STORAGE_KEYS.FACILITIES, INITIAL_FACILITIES);
+  return [];
 }
 
-export function saveFacility(facility: Facility): void {
-  const facilities = getFacilities();
-  const idx = facilities.findIndex(f => f.id === facility.id);
-  if (idx >= 0) {
-    facilities[idx] = facility;
-  } else {
-    facilities.push(facility);
-  }
-  setItem(STORAGE_KEYS.FACILITIES, facilities);
+export function saveFacility(_facility: Facility): void {
+  productionBackendRequired<void>('facility administration');
 }
 
 // ---------------- RATES ----------------
 export function getRates(): ShippingRate[] {
-  return getItem<ShippingRate[]>(STORAGE_KEYS.RATES, INITIAL_RATES);
+  return [];
 }
 
-export function saveRate(rate: ShippingRate): void {
-  const rates = getRates();
-  const idx = rates.findIndex(r => r.id === rate.id);
-  if (idx >= 0) {
-    rates[idx] = rate;
-  } else {
-    rates.push(rate);
-  }
-  setItem(STORAGE_KEYS.RATES, rates);
+export function saveRate(_rate: ShippingRate): void {
+  productionBackendRequired<void>('rate administration');
 }
 
-export function deleteRate(rateId: string): void {
-  const rates = getRates().filter(r => r.id !== rateId);
-  setItem(STORAGE_KEYS.RATES, rates);
+export function deleteRate(_rateId: string): void {
+  productionBackendRequired<void>('rate administration');
 }
 
 export function calculateShippingQuote(
-  service: ServiceTier,
-  weightKg: number,
-  dimensions?: { length: number; width: number; height: number },
-  declaredValue?: number
+  _service: ServiceTier,
+  _weightKg: number,
+  _dimensions?: { length: number; width: number; height: number },
+  _declaredValue?: number
 ): { price: number; estDaysMin: number; estDaysMax: number } {
-  const rates = getRates();
-  const matchingRate = rates.find(r => r.service === service) || rates[0];
-
-  // Volumetric weight calculation (cm / 5000)
-  let billableWeight = Math.max(0.5, weightKg);
-  if (dimensions && dimensions.length && dimensions.width && dimensions.height) {
-    const volumetricWeight = (dimensions.length * dimensions.width * dimensions.height) / 5000;
-    billableWeight = Math.max(billableWeight, volumetricWeight);
-  }
-
-  let price = matchingRate.baseRate + billableWeight * matchingRate.perKgRate;
-  if (declaredValue && declaredValue > 1000) {
-    price += (declaredValue - 1000) * 0.008; // Insurance fee
-  }
-
-  return {
-    price: Math.round(price * 100) / 100,
-    estDaysMin: matchingRate.estDaysMin,
-    estDaysMax: matchingRate.estDaysMax,
-  };
+  return productionBackendRequired<{ price: number; estDaysMin: number; estDaysMax: number }>('live shipping-rate calculation');
 }
 
 // ---------------- LOCATIONS ----------------
 export function getLocations(): LocationPoint[] {
-  return getItem<LocationPoint[]>(STORAGE_KEYS.LOCATIONS, INITIAL_LOCATIONS);
+  return [];
 }
 
-export function saveLocation(location: LocationPoint): void {
-  const locations = getLocations();
-  const idx = locations.findIndex(l => l.id === location.id);
-  if (idx >= 0) {
-    locations[idx] = location;
-  } else {
-    locations.push(location);
-  }
-  setItem(STORAGE_KEYS.LOCATIONS, locations);
+export function saveLocation(_location: LocationPoint): void {
+  productionBackendRequired('location administration');
 }
 
 // ---------------- TICKETS ----------------
 export function getTickets(): SupportTicket[] {
-  return getItem<SupportTicket[]>(STORAGE_KEYS.TICKETS, INITIAL_TICKETS);
+  return [];
 }
 
-export function addTicket(ticket: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'replies'>): SupportTicket {
-  const tickets = getTickets();
-  const newTicket: SupportTicket = {
-    ...ticket,
-    id: `tkt_${Date.now()}`,
-    ticketNumber: `TKT-${Math.floor(10000 + Math.random() * 90000)}`,
-    createdAt: new Date().toISOString(),
-    replies: [
-      {
-        id: `rep_${Date.now()}`,
-        sender: ticket.customerName,
-        role: 'customer',
-        message: ticket.message,
-        timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-          ' ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      },
-    ],
-  };
-  tickets.unshift(newTicket);
-  setItem(STORAGE_KEYS.TICKETS, tickets);
-  return newTicket;
+export function addTicket(_ticket: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'replies'>): SupportTicket {
+  return productionBackendRequired('support ticket creation');
 }
 
-export function replyToTicket(ticketId: string, sender: string, role: 'customer' | 'support_agent', message: string): void {
-  const tickets = getTickets();
-  const ticket = tickets.find(t => t.id === ticketId);
-  if (ticket) {
-    ticket.replies.push({
-      id: `rep_${Date.now()}`,
-      sender,
-      role,
-      message,
-      timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-        ' ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    });
-    if (role === 'support_agent') {
-      ticket.status = 'Waiting for Customer';
-    } else {
-      ticket.status = 'In Progress';
-    }
-    setItem(STORAGE_KEYS.TICKETS, tickets);
-  }
+export function replyToTicket(_ticketId: string, _sender: string, _role: 'customer' | 'support_agent', _message: string): void {
+  productionBackendRequired('support ticket replies');
 }
 
-export function updateTicketStatus(ticketId: string, status: SupportTicket['status']): void {
-  const tickets = getTickets();
-  const ticket = tickets.find(t => t.id === ticketId);
-  if (ticket) {
-    ticket.status = status;
-    setItem(STORAGE_KEYS.TICKETS, tickets);
-  }
+export function updateTicketStatus(_ticketId: string, _status: SupportTicket['status']): void {
+  productionBackendRequired('support ticket administration');
 }
 
 // ---------------- AUDIT LOGS ----------------
 export function getAuditLogs(): AuditLog[] {
-  return getItem<AuditLog[]>(STORAGE_KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
+  return [];
 }
 
-export function addAuditLog(log: Omit<AuditLog, 'id' | 'timestamp'>): void {
-  const logs = getAuditLogs();
-  const newLog: AuditLog = {
-    ...log,
-    id: `log_${Date.now()}`,
-    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
-  };
-  logs.unshift(newLog);
-  setItem(STORAGE_KEYS.AUDIT_LOGS, logs);
+export function addAuditLog(_log: Omit<AuditLog, 'id' | 'timestamp'>): void {
+  productionBackendRequired('server-side audit logging');
 }
 
 // ---------------- NOTIFICATIONS ----------------
 export function getNotifications(): NotificationItem[] {
-  return getItem<NotificationItem[]>(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
+  return [];
 }
 
-export function addNotification(notif: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>): void {
-  const notifications = getNotifications();
-  const newNotif: NotificationItem = {
-    ...notif,
-    id: `notif_${Date.now()}`,
-    read: false,
-    timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-      ' ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-  };
-  notifications.unshift(newNotif);
-  setItem(STORAGE_KEYS.NOTIFICATIONS, notifications);
+export function addNotification(_notif: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>): void {
+  productionBackendRequired('server-side notifications');
 }
 
-export function markNotificationAsRead(id: string): void {
-  const notifications = getNotifications();
-  const item = notifications.find(n => n.id === id);
-  if (item) {
-    item.read = true;
-    setItem(STORAGE_KEYS.NOTIFICATIONS, notifications);
-  }
+export function markNotificationAsRead(_id: string): void {
+  productionBackendRequired('notification updates');
 }
 
 export function markAllNotificationsAsRead(): void {
-  const notifications = getNotifications().map(n => ({ ...n, read: true }));
-  setItem(STORAGE_KEYS.NOTIFICATIONS, notifications);
+  productionBackendRequired('notification updates');
 }
 
 // ---------------- SAVED ADDRESSES ----------------
 export function getSavedAddresses(userEmail?: string): SavedAddress[] {
-  const addresses = getItem<SavedAddress[]>(STORAGE_KEYS.ADDRESSES, INITIAL_SAVED_ADDRESSES);
+  const addresses: SavedAddress[] = [];
   if (!userEmail) return addresses;
   return addresses.filter(a => a.userId.toLowerCase() === userEmail.toLowerCase());
 }
 
-export function saveAddress(address: SavedAddress): void {
-  const addresses = getItem<SavedAddress[]>(STORAGE_KEYS.ADDRESSES, INITIAL_SAVED_ADDRESSES);
-  const idx = addresses.findIndex(a => a.id === address.id);
-  if (address.isDefault) {
-    addresses.forEach(a => {
-      if (a.userId === address.userId) a.isDefault = false;
-    });
-  }
-  if (idx >= 0) {
-    addresses[idx] = address;
-  } else {
-    addresses.push(address);
-  }
-  setItem(STORAGE_KEYS.ADDRESSES, addresses);
+export function saveAddress(_address: SavedAddress): void {
+  productionBackendRequired('address persistence');
 }
 
-export function deleteAddress(addressId: string): void {
-  const addresses = getItem<SavedAddress[]>(STORAGE_KEYS.ADDRESSES, INITIAL_SAVED_ADDRESSES).filter(a => a.id !== addressId);
-  setItem(STORAGE_KEYS.ADDRESSES, addresses);
+export function deleteAddress(_addressId: string): void {
+  productionBackendRequired('address deletion');
 }
 
-export function setDefaultAddress(addressId: string, userEmail: string): void {
-  const addresses = getItem<SavedAddress[]>(STORAGE_KEYS.ADDRESSES, INITIAL_SAVED_ADDRESSES);
-  addresses.forEach(a => {
-    if (a.userId.toLowerCase() === userEmail.toLowerCase()) {
-      a.isDefault = a.id === addressId;
-    }
-  });
-  setItem(STORAGE_KEYS.ADDRESSES, addresses);
+export function setDefaultAddress(_addressId: string, _userEmail: string): void {
+  productionBackendRequired('address administration');
 }
 
 // ---------------- ALIASES & COMPATIBILITY HELPERS ----------------
@@ -435,7 +192,7 @@ export const getAddresses = (userId?: string) => getSavedAddresses(userId);
 export const addAddress = saveAddress;
 export const getSupportTickets = getTickets;
 
-export function addSupportTicket(ticket: {
+export function addSupportTicket(_ticket: {
   id?: string;
   userId?: string;
   subject: string;
@@ -446,109 +203,23 @@ export function addSupportTicket(ticket: {
   message: string;
   trackingNumber?: string;
 }): SupportTicket {
-  const categoryMap: Record<string, SupportTicket['category']> = {
-    tracking: 'Tracking',
-    shipping: 'Shipping',
-    billing: 'Payments',
-    customs: 'Customs',
-  };
-  const priorityMap: Record<string, SupportTicket['priority']> = {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'Urgent',
-  };
-
-  return addTicket({
-    customerName: 'Sarah Jenkins',
-    customerEmail: 's.jenkins@apex-biohealth.com',
-    subject: ticket.subject,
-    category: categoryMap[ticket.category] || 'Tracking',
-    priority: priorityMap[ticket.priority] || 'Medium',
-    status: 'Open',
-    message: ticket.message,
-    trackingNumber: ticket.trackingNumber,
-  });
+  return productionBackendRequired('support ticket creation');
 }
-
-const INITIAL_PICKUPS: PickupRequest[] = [
-  {
-    id: 'pck_01',
-    userId: 'usr_demo_customer',
-    pickupDate: '2026-09-22',
-    timeSlot: '13:00 - 17:00',
-    locationAddress: '450 Mission Street, Suite 1200, San Francisco, CA',
-    packageCount: 3,
-    totalWeightKg: 12.4,
-    specialInstructions: 'Ask for Sarah at reception desk.',
-    status: 'scheduled',
-    createdAt: '2026-09-21 08:30',
-  },
-  {
-    id: 'pck_02',
-    userId: 'usr_demo_customer',
-    pickupDate: '2026-09-18',
-    timeSlot: '09:00 - 13:00',
-    locationAddress: '450 Mission Street, Suite 1200, San Francisco, CA',
-    packageCount: 1,
-    totalWeightKg: 4.2,
-    status: 'completed',
-    createdAt: '2026-09-17 14:15',
-  },
-];
 
 export function getPickupRequests(): PickupRequest[] {
-  return getItem<PickupRequest[]>('nexora_pickups', INITIAL_PICKUPS);
+  return [];
 }
 
-export function addPickupRequest(pickup: PickupRequest): void {
-  const pickups = getPickupRequests();
-  pickups.unshift(pickup);
-  setItem('nexora_pickups', pickups);
+export function addPickupRequest(_pickup: PickupRequest): void {
+  productionBackendRequired('pickup scheduling');
 }
-
-const INITIAL_INVOICES: InvoiceItem[] = [
-  {
-    id: 'inv_101',
-    invoiceNumber: 'INV-2026-0941',
-    date: 'Sep 18, 2026',
-    amount: 485,
-    status: 'Paid',
-  },
-  {
-    id: 'inv_102',
-    invoiceNumber: 'INV-2026-0882',
-    date: 'Sep 04, 2026',
-    amount: 1240,
-    status: 'Paid',
-  },
-  {
-    id: 'inv_103',
-    invoiceNumber: 'INV-2026-0790',
-    date: 'Aug 21, 2026',
-    amount: 890,
-    status: 'Paid',
-  },
-];
 
 export function getInvoices(): InvoiceItem[] {
-  return getItem<InvoiceItem[]>('nexora_invoices', INITIAL_INVOICES);
+  return [];
 }
 
 // ---------------- OPERATIONAL CACHE SYNC ----------------
 export function syncOperationalCache(): void {
-  setItem(STORAGE_KEYS.SHIPMENTS, INITIAL_SHIPMENTS);
-  setItem(STORAGE_KEYS.USERS, INITIAL_USERS);
-  setItem(STORAGE_KEYS.CURRENT_USER, INITIAL_USERS[0]);
-  setItem(STORAGE_KEYS.DRIVERS, INITIAL_DRIVERS);
-  setItem(STORAGE_KEYS.FACILITIES, INITIAL_FACILITIES);
-  setItem(STORAGE_KEYS.RATES, INITIAL_RATES);
-  setItem(STORAGE_KEYS.LOCATIONS, INITIAL_LOCATIONS);
-  setItem(STORAGE_KEYS.TICKETS, INITIAL_TICKETS);
-  setItem(STORAGE_KEYS.AUDIT_LOGS, INITIAL_AUDIT_LOGS);
-  setItem(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
-  setItem(STORAGE_KEYS.ADDRESSES, INITIAL_SAVED_ADDRESSES);
-  setItem('nexora_pickups', INITIAL_PICKUPS);
-  setItem('nexora_invoices', INITIAL_INVOICES);
+  productionBackendRequired('operational synchronization');
 }
 
-export const resetDemoData = syncOperationalCache;

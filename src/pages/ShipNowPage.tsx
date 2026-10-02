@@ -15,7 +15,8 @@ import {
   AlertCircle,
   FileCheck,
 } from 'lucide-react';
-import { addShipment, getCurrentUser } from '../lib/store';
+import { getCurrentUser } from '../lib/store';
+import { api } from '../lib/api';
 import { Shipment, ServiceTier } from '../types';
 
 interface ShipNowPageProps {
@@ -28,120 +29,79 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
 
   // Form State
   const [sender, setSender] = useState({
-    name: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Marcus Sterling',
-    company: currentUser?.company || 'Sterling Global Innovations',
-    email: currentUser?.email || 'm.sterling@sterlingglobal.com',
-    phone: currentUser?.phone || '+1 415-555-8921',
-    address: '450 Mission Street, Suite 1200',
-    city: 'San Francisco',
-    state: 'CA',
-    postalCode: '94105',
-    country: 'United States',
+    name: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '',
+    company: currentUser?.company || '',
+    email: currentUser?.email || '',
+    phone: currentUser?.phone || '',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
   });
 
   const [recipient, setRecipient] = useState({
-    name: 'Elena Rostova',
-    company: 'Nordic BioPharm GmbH',
-    email: 'elena.rostova@nordicbiopharm.de',
-    phone: '+49 30 901820',
-    address: 'Friedrichstraße 140',
-    city: 'Berlin',
-    state: 'Berlin',
-    postalCode: '10117',
-    country: 'Germany',
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
   });
 
   const [packageInfo, setPackageInfo] = useState({
     type: 'Parcel' as 'Document' | 'Parcel' | 'Freight' | 'Pallet',
-    weight: 4.5,
-    length: 35,
-    width: 25,
-    height: 18,
-    declaredValue: 650,
+    weight: 0,
+    length: 0,
+    width: 0,
+    height: 0,
+    declaredValue: 0,
     currency: 'USD',
-    description: 'Precision Laboratory Optical Sensors',
-    isFragile: true,
+    description: '',
+    isFragile: false,
     isHazardous: false,
-    signatureRequired: true,
+    signatureRequired: false,
   });
 
   const [selectedService, setSelectedService] = useState<ServiceTier>('Express');
   const [pickupOption, setPickupOption] = useState<'pickup' | 'dropoff'>('pickup');
-  const [pickupDate, setPickupDate] = useState('2026-09-22');
+  const [pickupDate, setPickupDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'account'>('card');
   const [createdShipment, setCreatedShipment] = useState<Shipment | null>(null);
 
-  // Dynamic pricing calculation
-  const baseCost = packageInfo.weight * 8.5;
-  const serviceMultiplier =
-    selectedService === 'Express' ? 2.4 : selectedService === 'Priority' ? 1.7 : selectedService === 'Freight' ? 3.8 : 1.0;
-  const subtotal = Math.round(baseCost * serviceMultiplier + 25);
-  const insuranceFee = packageInfo.declaredValue > 500 ? 15 : 0;
-  const totalAmount = subtotal + insuranceFee;
+  const [liveQuote, setLiveQuote] = useState<{ price: number; estDaysMin: number; estDaysMax: number } | null>(null);
+  const subtotal = liveQuote?.price ?? 0;
+  const insuranceFee = 0;
+  const totalAmount = liveQuote?.price ?? 0;
 
-  const handleCreateShipment = () => {
-    // Generate clean tracking number NX + 9 digits
-    const randomSuffix = Math.floor(100000000 + Math.random() * 900000000);
-    const trackingNumber = `NX${randomSuffix}`;
-
-    const newShipment: Shipment = {
-      id: `ship_${Date.now()}`,
-      trackingNumber,
-      sender,
-      recipient,
-      packageInfo: {
-        type: 'Medium Box',
-        weight: Number(packageInfo.weight) || 4.5,
-        length: Number(packageInfo.length) || 35,
-        width: Number(packageInfo.width) || 25,
-        height: Number(packageInfo.height) || 18,
-        pieces: 1,
-        description: packageInfo.description,
-        declaredValue: Number(packageInfo.declaredValue) || 650,
-      },
-      service: selectedService,
-      status: 'Shipment Created',
-      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      estimatedDelivery: 'September 25, 2026',
-      events: [
-        {
-          id: `ev_${Date.now()}`,
-          status: 'Shipment Created',
-          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          location: `${sender.city}, ${sender.country}`,
-          description: `Electronic shipping label and commercial manifest generated. Pickup scheduled for ${pickupDate}.`,
-          facility: `${sender.city} Logistics Hub`,
-        },
-      ],
-      routeWaypoints: [
-        {
-          name: `${sender.city} Hub`,
-          country: sender.country,
-          coordinates: [37.77, -122.41],
-          status: 'current',
-          timestamp: 'Shipment Created',
-        },
-        {
-          name: 'Frankfurt Gateway',
-          country: 'Germany',
-          coordinates: [50.03, 8.56],
-          status: 'upcoming',
-        },
-        {
-          name: `${recipient.city} Distribution Center`,
-          country: recipient.country,
-          coordinates: [52.52, 13.40],
-          status: 'upcoming',
-        },
-      ],
-      cost: totalAmount,
-      paymentStatus: 'Paid',
-      invoiceNumber: `INV-NX-${Math.floor(100000 + Math.random() * 900000)}`,
-    };
-
-    addShipment(newShipment);
-    setCreatedShipment(newShipment);
-    setCurrentStep(6);
+  const handleCreateShipment = async () => {
+    try {
+      const quote = await api.quote({
+        service: selectedService,
+        weightKg: packageInfo.weight,
+        originCountry: sender.country,
+        destCountry: recipient.country,
+      });
+      setLiveQuote(quote);
+      const created = await api.createShipment({
+        sender,
+        recipient,
+        packageInfo: { ...packageInfo, pieces: 1 },
+        service: selectedService,
+        pickupOption,
+        pickupDate,
+        paymentMethod,
+      });
+      setCreatedShipment(created as Shipment);
+      const checkout = await api.createPaymentCheckout(created.id);
+      if (!checkout.checkoutUrl) throw new Error('Payment checkout could not be created.');
+      window.location.assign(checkout.checkoutUrl);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to create shipment through the production API.');
+    }
   };
 
   const steps = [
@@ -619,10 +579,10 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="font-extrabold text-slate-900 text-base">FedEx Express Air</span>
-                <span className="text-lg font-mono font-extrabold text-[#4D148C]">${Math.round(baseCost * 2.4 + 25)}</span>
+                <span className="text-xs font-mono font-bold text-[#4D148C]">Rate returned at confirmation</span>
               </div>
               <p className="text-xs text-slate-600">Guaranteed delivery within 24–48 hours with priority flight manifests.</p>
-              <div className="mt-3 text-[11px] font-mono text-[#FF6600] font-semibold">Delivery: Sep 24, 2026 by 10:30 AM</div>
+              <div className="mt-3 text-[11px] font-mono text-[#FF6600] font-semibold">Live delivery estimate from rate API</div>
             </div>
 
             <div
@@ -635,10 +595,10 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="font-extrabold text-slate-900 text-base">FedEx Priority International</span>
-                <span className="text-lg font-mono font-extrabold text-slate-900">${Math.round(baseCost * 1.7 + 25)}</span>
+                <span className="text-xs font-mono font-bold text-slate-700">Rate returned at confirmation</span>
               </div>
               <p className="text-xs text-slate-600">Reliable cross-border transit in 3–4 business days with customs clearance.</p>
-              <div className="mt-3 text-[11px] font-mono text-slate-600 font-semibold">Delivery: Sep 26, 2026 by End of Day</div>
+              <div className="mt-3 text-[11px] font-mono text-slate-600 font-semibold">Live delivery estimate from rate API</div>
             </div>
 
             <div
@@ -651,10 +611,10 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="font-extrabold text-slate-900 text-base">FedEx Standard Ground</span>
-                <span className="text-lg font-mono font-extrabold text-slate-900">${Math.round(baseCost * 1.0 + 25)}</span>
+                <span className="text-xs font-mono font-bold text-slate-700">Rate returned at confirmation</span>
               </div>
               <p className="text-xs text-slate-600">Cost-effective economic highway transit in 5–7 business days.</p>
-              <div className="mt-3 text-[11px] font-mono text-slate-600 font-semibold">Delivery: Sep 29, 2026</div>
+              <div className="mt-3 text-[11px] font-mono text-slate-600 font-semibold">Live delivery estimate from rate API</div>
             </div>
 
             <div
@@ -667,10 +627,10 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="font-extrabold text-slate-900 text-base">Heavy Freight Charter</span>
-                <span className="text-lg font-mono font-extrabold text-slate-900">${Math.round(baseCost * 3.8 + 25)}</span>
+                <span className="text-xs font-mono font-bold text-slate-700">Rate returned at confirmation</span>
               </div>
               <p className="text-xs text-slate-600">Palletized cargo and high-tonnage multi-stop line haul logistics.</p>
-              <div className="mt-3 text-[11px] font-mono text-slate-600 font-semibold">Delivery: Sep 25, 2026 (Tailgate service)</div>
+              <div className="mt-3 text-[11px] font-mono text-slate-600 font-semibold">Live delivery estimate from rate API</div>
             </div>
           </div>
 
@@ -734,7 +694,7 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Step 5: Review Consignment & Confirm Order</h2>
-              <p className="text-xs text-slate-500">Verify routing, charges, and process simulated payment.</p>
+              <p className="text-xs text-slate-500">Review shipment details. Live rate and shipment creation are processed by the production API.</p>
             </div>
           </div>
 
@@ -813,7 +773,7 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
               <div className="pt-4 mt-6 border-t border-slate-800 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400">Total Billed:</span>
-                  <div className="text-2xl font-mono font-extrabold text-white">${totalAmount}.00</div>
+                  <div className="text-2xl font-mono font-extrabold text-white">{liveQuote ? `${totalAmount.toFixed(2)}` : 'Live rate pending'}</div>
                 </div>
                 <span className="text-[11px] font-mono text-cyan-300 bg-cyan-950 px-2 py-1 rounded border border-cyan-800">
                   USD
@@ -834,7 +794,7 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
               className="px-8 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all"
             >
               <FileCheck className="w-5 h-5" />
-              Confirm & Generate Waybill ($ {totalAmount}.00)
+              Get Live Rate & Create Shipment
             </button>
           </div>
         </div>
