@@ -76,7 +76,7 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
       carrierJobId,
       carrierRequestId,
       status: tracking ? 'Shipment Created' : 'Carrier Processing',
-      events: FieldValue.serverTimestamp(),
+      events: [...(Array.isArray(shipment.events) ? shipment.events : []), { id: randomUUID(), status: tracking ? 'Shipment Created' : 'Carrier Processing', location: shipment.sender?.city || '', timestamp: new Date().toISOString(), description: tracking ? 'Shipment created with FedEx.' : 'FedEx accepted the shipment request for processing.' }],
     });
     return tracking ? 'created' : 'processing';
   } catch (carrierError) {
