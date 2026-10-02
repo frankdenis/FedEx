@@ -93,7 +93,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
   // Only server-backed customer shipments are displayed
   const filteredShipments = allShipments.filter(s => {
     const matchesSearch =
-      s.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.trackingNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.recipient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.recipient.city.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
