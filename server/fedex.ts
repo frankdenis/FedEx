@@ -25,11 +25,11 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.accessToken;
 }
 
-export async function fedexRequest<T>(path: string, payload: unknown): Promise<T> {
+export async function fedexRequest<T>(path: string, payload: unknown, transactionId?: string): Promise<T> {
   const token = await getAccessToken();
   const response = await fetch(baseUrl + path, {
     method: 'POST',
-    headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json', accept: 'application/json' },
+    headers: {\n      authorization: 'Bearer ' + token,\n      'content-type': 'application/json',\n      accept: 'application/json',\n      ...(transactionId ? { 'x-customer-transaction-id': transactionId } : {}),\n    },
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => null);
