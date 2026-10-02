@@ -5,10 +5,26 @@ import { db } from './firebaseAdmin.js';
 import { requireAdmin, requireAuth } from './auth.js';
 import { assertAddress, assertPackage, assertService } from './validation.js';
 import Stripe from 'stripe';
+import { randomUUID } from 'node:crypto';
 
 const app = express();
 const port = Number(process.env.API_PORT || 8787);
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const appBaseUrl = (process.env.APP_BASE_URL || '').replace(/\\/$/, '');
+const rateWindowMs = 60_000;
+const rateLimit = new Map<string, { count: number; resetAt: number }>();
+
+function limitRequests(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const key = req.ip || 'unknown';
+  const now = Date.now();
+  const entry = rateLimit.get(key);
+  if (!entry || entry.resetAt <= now) rateLimit.set(key, { count: 1, resetAt: now + rateWindowMs });
+  else if (++entry.count > 120) return res.status(429).json({ error: 'Too many requests. Please try again shortly.' });
+  return next();
+}
+
+app.disable('x-powered-by');
+app.use(limitRequests);
 
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: 'Payment provider is not configured.' });
@@ -105,15 +121,15 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
     const rate = rates.docs[0].data();
     const cost = Math.round((Number(rate.baseRate) + Number(rate.perKgRate) * req.body.packageInfo.weight) * 100) / 100;
     const now = new Date().toISOString();
-    const token = crypto.randomUUID().replace(/-/g, '').toUpperCase();
+    const token = randomUUID().replace(/-/g, '').toUpperCase();
     const trackingNumber = 'FDX' + token.slice(0, 12);
     const invoiceNumber = 'INV-' + now.slice(0, 10).replace(/-/g, '') + '-' + token.slice(12, 20);
     const shipment = {
       trackingNumber, invoiceNumber, ownerUid: req.user!.uid,
       sender: req.body.sender, recipient: req.body.recipient, packageInfo: req.body.packageInfo,
       service: req.body.service, status: 'Shipment Created', estimatedDelivery: null, createdAt: now,
-      events: [{ id: crypto.randomUUID(), status: 'Shipment Created', location: req.body.sender.city, timestamp: now, description: 'Shipment record created. Awaiting payment and operational processing.' }],
-      routeWaypoints: [], assignedFacility: null, assignedDriver: null, cost, paymentStatus: 'Pending', rateId: rates.docs[0].id
+      events: [{ id: randomUUID(), status: 'Shipment Created', location: req.body.sender.city, timestamp: now, description: 'Shipment record created. Awaiting payment and operational processing.' }],
+      routeWaypoints: [], assignedFacility: null, assignedDriver: null, cost, paymentStatus: 'Pending', currency: String(rate.currency || 'USD').toUpperCase(), rateId: rates.docs[0].id
     };
     const doc = await db.collection('shipments').add(shipment);
     await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.created', shipmentNumber: trackingNumber, details: 'Shipment record created through authenticated API.', timestamp: FieldValue.serverTimestamp() });
@@ -125,9 +141,9 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
 
 app.post('/api/payments/checkout', requireAuth, async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Payment provider is not configured.' });
-  const { shipmentId, successUrl, cancelUrl } = req.body;
+  const { shipmentId } = req.body;
   if (typeof shipmentId !== 'string' || !shipmentId.trim()) return res.status(400).json({ error: 'shipmentId is required.' });
-  if (typeof successUrl !== 'string' || typeof cancelUrl !== 'string') return res.status(400).json({ error: 'successUrl and cancelUrl are required.' });
+  if (!appBaseUrl) return res.status(503).json({ error: 'Application base URL is not configured.' });
   const shipmentRef = db.collection('shipments').doc(shipmentId);
   const shipmentSnapshot = await shipmentRef.get();
   if (!shipmentSnapshot.exists) return res.status(404).json({ error: 'Shipment not found.' });
@@ -135,14 +151,16 @@ app.post('/api/payments/checkout', requireAuth, async (req, res) => {
   if (shipment.ownerUid !== req.user!.uid && !req.user!.admin) return res.status(403).json({ error: 'You do not have access to this shipment.' });
   if (shipment.paymentStatus === 'Paid') return res.status(409).json({ error: 'Shipment is already paid.' });
   const amount = Number(shipment.cost);
+  const currency = String(shipment.currency || 'USD').toLowerCase();
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Shipment has no payable production amount.' });
+  if (!/^[a-z]{3}$/.test(currency)) return res.status(400).json({ error: 'Shipment has an invalid payment currency.' });
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
-    success_url: successUrl,
-    cancel_url: cancelUrl,
+    success_url: appBaseUrl + '/dashboard?payment=success',
+    cancel_url: appBaseUrl + '/dashboard?payment=cancelled',
     client_reference_id: shipmentId,
     metadata: { shipmentId, ownerUid: shipment.ownerUid },
-    line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(amount * 100), product_data: { name: 'International shipment ' + shipment.trackingNumber } } }],
+    line_items: [{ quantity: 1, price_data: { currency: String(shipment.currency || 'usd').toLowerCase(), unit_amount: Math.round(amount * 100), product_data: { name: 'International shipment ' + shipment.trackingNumber } } }],
   });
   await shipmentRef.update({ paymentSessionId: session.id, paymentProvider: 'stripe' });
   return res.json({ checkoutUrl: session.url, sessionId: session.id });
