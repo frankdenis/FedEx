@@ -192,6 +192,8 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
   }
 });
 
+app.use(express.json({ limit: '1mb' }));
+
 app.post('/api/internal/carrier-jobs/process', async (req, res) => {
   const secret = process.env.CARRIER_WORKER_SECRET;
   if (!secret || req.header('x-carrier-worker-secret') !== secret) return res.status(401).json({ error: 'Unauthorized.' });
@@ -215,8 +217,6 @@ app.post('/api/internal/carrier-jobs/process', async (req, res) => {
   }
   return res.json({ processed: results.length, results });
 });
-
-app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'fedex-logistics-api', version: '1.0.0' }));
 
