@@ -39,6 +39,21 @@ app.use((req, res, next) => {
 });
 app.use(limitRequests);
 
+async function enqueueCarrierJob(shipmentId: string): Promise<void> {
+  const jobRef = db.collection('carrierJobs').doc(shipmentId);
+  await db.runTransaction(async transaction => {
+    const existing = await transaction.get(jobRef);
+    if (existing.exists && ['queued', 'processing'].includes(String(existing.data()?.status))) return;
+    transaction.set(jobRef, {
+      shipmentId,
+      status: 'queued',
+      attempts: Number(existing.data()?.attempts || 0),
+      queuedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
+
 async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'processing' | 'failed' | 'skipped'> {
   const shipmentRef = db.collection('shipments').doc(shipmentId);
   let carrierRequestId = '';
@@ -162,7 +177,7 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
           status: 'Payment Confirmed',
         });
 
-        await ensureFedexShipment(shipmentId);
+        await enqueueCarrierJob(shipmentId);
         await db.collection('auditLogs').add({
           action: 'payment.completed',
           shipmentId,
@@ -175,6 +190,30 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
   } catch {
     return res.status(400).json({ error: 'Invalid payment webhook signature.' });
   }
+});
+
+app.post('/api/internal/carrier-jobs/process', async (req, res) => {
+  const secret = process.env.CARRIER_WORKER_SECRET;
+  if (!secret || req.header('x-carrier-worker-secret') !== secret) return res.status(401).json({ error: 'Unauthorized.' });
+  const limit = Math.min(Math.max(Number(req.body?.limit || 5), 1), 20);
+  const queued = await db.collection('carrierJobs').where('status', '==', 'queued').limit(limit).get();
+  const results: Array<{ shipmentId: string; result: string }> = [];
+  for (const job of queued.docs) {
+    const jobRef = job.ref;
+    const shipmentId = String(job.data().shipmentId || '');
+    if (!shipmentId) continue;
+    const claimed = await db.runTransaction(async transaction => {
+      const snapshot = await transaction.get(jobRef);
+      if (!snapshot.exists || snapshot.data()?.status !== 'queued') return false;
+      transaction.update(jobRef, { status: 'processing', startedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(), attempts: FieldValue.increment(1) });
+      return true;
+    });
+    if (!claimed) continue;
+    const result = await ensureFedexShipment(shipmentId);
+    await jobRef.update({ status: result === 'created' || result === 'processing' ? 'completed' : 'failed', result, updatedAt: FieldValue.serverTimestamp() });
+    results.push({ shipmentId, result });
+  }
+  return res.json({ processed: results.length, results });
 });
 
 app.use(express.json({ limit: '1mb' }));
