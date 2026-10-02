@@ -25,7 +25,6 @@ import {
   getFacilities,
   getSupportTickets,
   getUsers,
-  syncOperationalCache,
 } from '../lib/store';
 import { Shipment, TrackingStatus, Driver, Facility, SupportTicket } from '../types';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -135,7 +134,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             FedEx Global Operations Console
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Logged in as Dispatch Administrator (Alexander Vance) • System Gateway Node: MEM-SUPERHUB-01
+            Authenticated operations user • Live operations data
           </p>
         </div>
 
@@ -158,17 +157,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
           >
             <ExternalLink className="w-3.5 h-3.5" /> Public Tracking View
           </button>
-          <button
-            onClick={() => {
-              if (window.confirm('Synchronize operational database with central flight & dispatch nodes?')) {
-                syncOperationalCache();
-                refreshData();
-              }
-            }}
-            className="px-4 py-2 rounded-xl bg-[#FF6600] hover:bg-orange-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Sync Ops Cache
-          </button>
+
         </div>
       </div>
 
@@ -242,7 +231,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
             <div>
               <h2 className="text-base font-bold text-slate-900">Consignment Dispatch & Status Controls</h2>
               <p className="text-xs text-slate-500">
-                Click "Advance Status" on any shipment to simulate live package movement across milestones.
+                Shipment status changes are disabled until the production operations API is connected.
               </p>
             </div>
 
@@ -311,12 +300,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
                       {s.events[0]?.description || 'Shipment created'}
                     </td>
                     <td className="py-3.5 px-3 text-right">
-                      <button
-                        onClick={() => openStatusEditor(s)}
-                        className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs shadow-2xs inline-flex items-center gap-1"
-                      >
-                        <Edit className="w-3 h-3" /> Advance Status
-                      </button>
+                      <span className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 font-bold text-xs inline-flex items-center">
+                        Live API required
+                      </span>
                     </td>
                   </tr>
                 ))}
