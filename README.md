@@ -21,22 +21,22 @@ This branch removes the previous demo-runtime architecture. Transactional users,
 
 ### Authentication
 
-Authentication now uses Firebase Authentication for real email/password account creation, sign-in, persistent sessions, and password-reset email requests.
+Authentication now uses Supabase Auth for real email/password account creation, sign-in, persistent sessions, and password-reset email requests.
 
 Administrative access is based on a Firebase admin custom claim. The client does not grant administrator privileges through a hard-coded account or shortcut.
 
 ## Production database/API foundation
 
-A server-side Express API and Firebase Admin integration now provide the first production data boundary:
+A server-side Express API and Supabase server client integration now provide the first production data boundary:
 
-- Firebase Authentication verifies ID tokens server-side.
-- Cloud Firestore stores operational records.
+- Supabase Auth verifies ID tokens server-side.
+- Supabase PostgreSQL stores operational records.
 - Customer shipment reads are scoped to the authenticated owner.
-- Administrator shipment mutations require the `admin=true` Firebase custom claim.
+- Administrator shipment mutations require the `admin=true` Supabase profile role.
 - Tracking and invoice identifiers are generated server-side.
 - Rate quotes are read from active production rate records; missing configuration returns an explicit error.
 - Public tracking responses are sanitized and do not expose sender/recipient contact data.
-- Firestore client rules deny direct browser access; operational data is accessed through the API.
+- PostgreSQL Row Level Security (RLS) deny direct browser access; operational data is accessed through the API.
 - Payment, carrier rating/label generation, customs, notifications, and webhooks remain explicit integration boundaries and are not faked.
 
 See `docs/production-api.md` for the database collections, API surface, security model, and required environment variables.
@@ -60,7 +60,7 @@ The application is structured for:
 - TypeScript
 - Vite
 - Tailwind CSS
-- Firebase Authentication
+- Supabase Auth
 - Lucide React
 - Motion
 
@@ -97,7 +97,7 @@ npm run lint
 
 ## Environment
 
-Firebase client configuration is supplied through the existing Firebase app configuration used by the project. Enable the required Firebase Authentication providers in the Firebase console before accepting production sign-ups.
+Firebase client configuration is supplied through the existing Supabase environment configuration used by the project. Enable the required Supabase Auth providers in the Supabase dashboard before accepting production sign-ups.
 
 The AI assistant still requires its configured Gemini runtime secret.
 
