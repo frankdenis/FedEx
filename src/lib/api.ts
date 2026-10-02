@@ -20,7 +20,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   health: () => request<{ ok: boolean; service: string; version: string }>('/api/health'),
-  me: () => request('/api/me'),
+  me: () => request<{ uid: string; email: string; admin: boolean; profile: { firstName?: string; lastName?: string; phone?: string; country?: string; status?: string; createdAt?: string } | null }>('/api/me'),
   shipments: () => request('/api/shipments'),
   shipment: (trackingNumber: string) => request('/api/shipments/' + encodeURIComponent(trackingNumber)),
   quote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request<{ price: number; estDaysMin: number; estDaysMax: number; currency: string; rateId: string }>('/api/quotes', { method: 'POST', body: JSON.stringify(input) }),
