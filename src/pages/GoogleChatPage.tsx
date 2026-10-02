@@ -17,7 +17,7 @@ import {
   Clock,
   ExternalLink,
 } from 'lucide-react';
-import { User } from 'firebase/auth';
+import type { User } from '@supabase/supabase-js';
 import {
   initAuth,
   googleSignIn,
