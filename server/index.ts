@@ -4,9 +4,37 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { db } from './firebaseAdmin.js';
 import { requireAdmin, requireAuth } from './auth.js';
 import { assertAddress, assertPackage, assertService } from './validation.js';
+import Stripe from 'stripe';
 
 const app = express();
 const port = Number(process.env.API_PORT || 8787);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: 'Payment provider is not configured.' });
+  const signature = req.header('stripe-signature');
+  if (!signature) return res.status(400).json({ error: 'Missing payment signature.' });
+  try {
+    const event = stripe.webhooks.constructEvent(req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const shipmentId = session.metadata?.shipmentId;
+      if (shipmentId && session.payment_status === 'paid') {
+        await db.collection('shipments').doc(shipmentId).update({
+          paymentStatus: 'Paid',
+          paymentProvider: 'stripe',
+          paymentReference: session.payment_intent || session.id,
+          paidAt: new Date().toISOString(),
+        });
+        await db.collection('auditLogs').add({ action: 'payment.completed', shipmentId, paymentReference: session.payment_intent || session.id, timestamp: FieldValue.serverTimestamp() });
+      }
+    }
+    return res.json({ received: true });
+  } catch {
+    return res.status(400).json({ error: 'Invalid payment webhook signature.' });
+  }
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'fedex-logistics-api', version: '1.0.0' }));
@@ -84,6 +112,31 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid shipment request.' });
   }
+});
+
+app.post('/api/payments/checkout', requireAuth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payment provider is not configured.' });
+  const { shipmentId, successUrl, cancelUrl } = req.body;
+  if (typeof shipmentId !== 'string' || !shipmentId.trim()) return res.status(400).json({ error: 'shipmentId is required.' });
+  if (typeof successUrl !== 'string' || typeof cancelUrl !== 'string') return res.status(400).json({ error: 'successUrl and cancelUrl are required.' });
+  const shipmentRef = db.collection('shipments').doc(shipmentId);
+  const shipmentSnapshot = await shipmentRef.get();
+  if (!shipmentSnapshot.exists) return res.status(404).json({ error: 'Shipment not found.' });
+  const shipment = shipmentSnapshot.data()!;
+  if (shipment.ownerUid !== req.user!.uid && !req.user!.admin) return res.status(403).json({ error: 'You do not have access to this shipment.' });
+  if (shipment.paymentStatus === 'Paid') return res.status(409).json({ error: 'Shipment is already paid.' });
+  const amount = Number(shipment.cost);
+  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Shipment has no payable production amount.' });
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    client_reference_id: shipmentId,
+    metadata: { shipmentId, ownerUid: shipment.ownerUid },
+    line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(amount * 100), product_data: { name: 'International shipment ' + shipment.trackingNumber } } }],
+  });
+  await shipmentRef.update({ paymentSessionId: session.id, paymentProvider: 'stripe' });
+  return res.json({ checkoutUrl: session.url, sessionId: session.id });
 });
 
 app.post('/api/shipments/:trackingNumber/events', requireAuth, requireAdmin, async (req, res) => {
