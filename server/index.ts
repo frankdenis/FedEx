@@ -67,7 +67,7 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
     const labelUrl = carrierOutput?.pieceResponses?.[0]?.packageDocuments?.[0]?.url || null;
     const carrierJobId = carrierResponse?.output?.jobId || carrierResponse?.jobId || null;
 
-    await shipmentSnapshot.ref.update({
+    await shipmentSnapshot.ref!.update({
       carrier: 'FedEx',
       carrierStatus: tracking ? 'Created' : 'Submitted',
       carrierTrackingNumber: tracking,
@@ -203,7 +203,7 @@ app.get('/api/shipments', requireAuth, async (req, res) => {
   const snapshot = req.user!.admin
     ? await ref.orderBy('createdAt', 'desc').limit(100).get()
     : await ref.where('ownerUid', '==', req.user!.uid).orderBy('createdAt', 'desc').limit(100).get();
-  res.json(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  res.json(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
 });
 
 app.get('/api/shipments/:trackingNumber', async (req, res) => {
