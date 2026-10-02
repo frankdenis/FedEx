@@ -78,6 +78,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
     e.preventDefault();
     if (!editingShipment) return;
 
+    if (!editingShipment.trackingNumber) return;
+
     updateShipmentStatus(
       editingShipment.trackingNumber,
       newStatus,
@@ -91,7 +93,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
   const filteredShipments = shipments.filter(s => {
     const matchesSearch =
-      s.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.trackingNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.recipient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.sender.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.recipient.city.toLowerCase().includes(searchTerm.toLowerCase());
