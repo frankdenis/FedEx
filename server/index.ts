@@ -164,7 +164,6 @@ app.post('/api/internal/carrier-jobs/process', async (req, res) => {
     if (!shipmentId) continue;
     const claimed = await db.rpc('claim_carrier_job', { p_shipment_id: shipmentId });
     if (!claimed) continue;
-    if (!claimed) continue;
     const result = await ensureFedexShipment(shipmentId);
     await jobRef.update({ status: result === 'created' || result === 'processing' ? 'completed' : 'failed', result, updatedAt: FieldValue.serverTimestamp() });
     results.push({ shipmentId, result });
@@ -317,17 +316,20 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
     }) as any;
 
     if (!transactionResult) return res.status(500).json({ error: 'Shipment creation failed.' });
-    return res.status(transactionResult.id === shipmentId ? 201 : 200).json(transactionResult);
 
-    await db.collection('auditLogs').add({
-      actorUid: req.user!.uid,
-      actorEmail: req.user!.email,
-      action: 'shipment.created',
-      shipmentNumber: internalReference,
-      details: 'Shipment record created through authenticated API.',
-      timestamp: FieldValue.serverTimestamp(),
-    });
-    return res.status(201).json(transactionResult.response);
+    const created = transactionResult.id === shipmentId;
+    if (created) {
+      await db.collection('auditLogs').add({
+        actorUid: req.user!.uid,
+        actorEmail: req.user!.email,
+        action: 'shipment.created',
+        shipmentNumber: internalReference,
+        details: 'Shipment record created through authenticated API.',
+        timestamp: FieldValue.serverTimestamp(),
+      });
+    }
+
+    return res.status(created ? 201 : 200).json(transactionResult);
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid shipment request.' });
   }
