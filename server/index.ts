@@ -28,7 +28,18 @@ app.get('/api/shipments/:trackingNumber', async (req, res) => {
   const snapshot = await db.collection('shipments').where('trackingNumber', '==', req.params.trackingNumber.trim().toUpperCase()).limit(1).get();
   if (snapshot.empty) return res.status(404).json({ error: 'Shipment not found.' });
   const doc = snapshot.docs[0];
-  return res.json({ id: doc.id, ...doc.data() });
+  const data = doc.data();
+  return res.json({
+    id: doc.id,
+    trackingNumber: data.trackingNumber,
+    service: data.service,
+    status: data.status,
+    estimatedDelivery: data.estimatedDelivery,
+    createdAt: data.createdAt,
+    events: data.events || [],
+    routeWaypoints: data.routeWaypoints || [],
+    assignedFacility: data.assignedFacility || null,
+  });
 });
 
 app.post('/api/quotes', requireAuth, async (req, res) => {
