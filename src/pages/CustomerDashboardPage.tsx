@@ -132,7 +132,7 @@ export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ on
     e.preventDefault();
     addPickupRequest({
       id: `pickup_${Date.now()}`,
-      userId: currentUser?.id || 'usr_demo_customer',
+      userId: currentUser?.id || '',
       ...newPickup,
       status: 'scheduled',
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
