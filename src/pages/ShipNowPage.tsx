@@ -80,68 +80,7 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
   const totalAmount = subtotal + insuranceFee;
 
   const handleCreateShipment = () => {
-    // Generate clean tracking number NX + 9 digits
-    const randomSuffix = Math.floor(100000000 + Math.random() * 900000000);
-    const trackingNumber = `NX${randomSuffix}`;
-
-    const newShipment: Shipment = {
-      id: `ship_${Date.now()}`,
-      trackingNumber,
-      sender,
-      recipient,
-      packageInfo: {
-        type: 'Medium Box',
-        weight: Number(packageInfo.weight) || 4.5,
-        length: Number(packageInfo.length) || 35,
-        width: Number(packageInfo.width) || 25,
-        height: Number(packageInfo.height) || 18,
-        pieces: 1,
-        description: packageInfo.description,
-        declaredValue: Number(packageInfo.declaredValue) || 650,
-      },
-      service: selectedService,
-      status: 'Shipment Created',
-      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      estimatedDelivery: 'September 25, 2026',
-      events: [
-        {
-          id: `ev_${Date.now()}`,
-          status: 'Shipment Created',
-          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          location: `${sender.city}, ${sender.country}`,
-          description: `Electronic shipping label and commercial manifest generated. Pickup scheduled for ${pickupDate}.`,
-          facility: `${sender.city} Logistics Hub`,
-        },
-      ],
-      routeWaypoints: [
-        {
-          name: `${sender.city} Hub`,
-          country: sender.country,
-          coordinates: [37.77, -122.41],
-          status: 'current',
-          timestamp: 'Shipment Created',
-        },
-        {
-          name: 'Frankfurt Gateway',
-          country: 'Germany',
-          coordinates: [50.03, 8.56],
-          status: 'upcoming',
-        },
-        {
-          name: `${recipient.city} Distribution Center`,
-          country: recipient.country,
-          coordinates: [52.52, 13.40],
-          status: 'upcoming',
-        },
-      ],
-      cost: totalAmount,
-      paymentStatus: 'Paid',
-      invoiceNumber: `INV-NX-${Math.floor(100000 + Math.random() * 900000)}`,
-    };
-
-    addShipment(newShipment);
-    setCreatedShipment(newShipment);
-    setCurrentStep(6);
+    window.alert('Shipment creation and payment require the production shipping and payment API. No shipment, payment, invoice, or tracking number is created in this client-only build.');
   };
 
   const steps = [
@@ -734,7 +673,7 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Step 5: Review Consignment & Confirm Order</h2>
-              <p className="text-xs text-slate-500">Verify routing, charges, and process simulated payment.</p>
+              <p className="text-xs text-slate-500">Review shipment details. Payment and shipment creation are processed by the production services.</p>
             </div>
           </div>
 
