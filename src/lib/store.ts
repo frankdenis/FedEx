@@ -38,7 +38,7 @@ export function getShipments(): Shipment[] {
 export function getShipmentByTracking(trackingNumber: string): Shipment | undefined {
   const shipments = getShipments();
   const cleaned = trackingNumber.trim().toUpperCase();
-  return shipments.find(s => s.trackingNumber.toUpperCase() === cleaned);
+  return shipments.find(s => s.trackingNumber?.toUpperCase() === cleaned);
 }
 
 export function saveShipment(_shipment: Shipment): void {
