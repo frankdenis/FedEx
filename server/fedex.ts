@@ -90,13 +90,14 @@ export async function createFedexShipment(input: {
     throw new Error('FedEx shipping credentials are not configured.');
   }
   const serviceType = resolveServiceType(input.service);
+  const weight = Number(input.packageInfo.weight);
   const response = await fedexRequest<any>('/ship/v1/shipments', {
     requestedShipment: {
       shipDatestamp: input.shipDate || new Date().toISOString().slice(0, 10),
       pickupType: 'USE_SCHEDULED_PICKUP',
       serviceType,
       packagingType: 'YOUR_PACKAGING',
-      totalWeight: Number(input.packageInfo.weight),
+      totalWeight: { units: 'KG', value: weight },
       shipper: toParty(input.sender),
       recipients: [toParty(input.recipient)],
       totalDeclaredValue: {
@@ -112,7 +113,7 @@ export async function createFedexShipment(input: {
         },
       },
       requestedPackageLineItems: [{
-        weight: { units: 'KG', value: Number(input.packageInfo.weight) },
+        weight: { units: 'KG', value: weight },
         dimensions: {
           length: Number(input.packageInfo.length || 1),
           width: Number(input.packageInfo.width || 1),
