@@ -95,6 +95,15 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
     assertAddress(req.body.recipient, 'recipient');
     assertPackage(req.body.packageInfo);
     assertService(req.body.service);
+    const rates = await db.collection('shippingRates')
+      .where('service', '==', req.body.service)
+      .where('originCountry', '==', req.body.sender.country)
+      .where('destCountry', '==', req.body.recipient.country)
+      .where('active', '==', true)
+      .limit(1).get();
+    if (rates.empty) return res.status(503).json({ error: 'No configured production rate is available for this route.' });
+    const rate = rates.docs[0].data();
+    const cost = Math.round((Number(rate.baseRate) + Number(rate.perKgRate) * req.body.packageInfo.weight) * 100) / 100;
     const now = new Date().toISOString();
     const token = crypto.randomUUID().replace(/-/g, '').toUpperCase();
     const trackingNumber = 'FDX' + token.slice(0, 12);
@@ -104,7 +113,7 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
       sender: req.body.sender, recipient: req.body.recipient, packageInfo: req.body.packageInfo,
       service: req.body.service, status: 'Shipment Created', estimatedDelivery: null, createdAt: now,
       events: [{ id: crypto.randomUUID(), status: 'Shipment Created', location: req.body.sender.city, timestamp: now, description: 'Shipment record created. Awaiting payment and operational processing.' }],
-      routeWaypoints: [], assignedFacility: null, assignedDriver: null, cost: null, paymentStatus: 'Pending'
+      routeWaypoints: [], assignedFacility: null, assignedDriver: null, cost, paymentStatus: 'Pending', rateId: rates.docs[0].id
     };
     const doc = await db.collection('shipments').add(shipment);
     await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.created', shipmentNumber: trackingNumber, details: 'Shipment record created through authenticated API.', timestamp: FieldValue.serverTimestamp() });
