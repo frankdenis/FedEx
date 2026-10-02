@@ -46,8 +46,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => (
         </ul></div>
         <div><h4 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200 mb-4 flex items-center gap-2"><Building2 className="w-3.5 h-3.5 text-cyan-400" />Control Center</h4><ul className="space-y-2.5 text-sm">
           <li><button onClick={() => onNavigate('/support')} className="hover:text-purple-300">Support</button></li>
-          <li><button onClick={() => onNavigate('/customer/dashboard')} className="hover:text-purple-300">Customer portal</button></li>
-          <li><button onClick={() => onNavigate('/admin/login')} className="hover:text-amber-400 flex items-center gap-1 font-semibold"><Shield className="w-3.5 h-3.5" />Admin</button></li>
+          <li><button onClick={() => onNavigate('/dashboard')} className="hover:text-purple-300">Customer portal</button></li>
+          <li><button onClick={() => onNavigate('/login')} className="hover:text-amber-400 flex items-center gap-1 font-semibold"><Shield className="w-3.5 h-3.5" />Admin</button></li>
           <li><button onClick={() => onNavigate('/resources')} className="hover:text-purple-300">Safety & compliance</button></li>
         </ul></div>
       </div>
