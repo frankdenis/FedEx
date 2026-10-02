@@ -314,13 +314,35 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
     };
     const idempotencyKey = req.header('Idempotency-Key');
     if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return res.status(400).json({ error: 'A valid Idempotency-Key is required.' });
-    const existingKey = await db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey).get();
-    if (existingKey.exists) return res.status(200).json(existingKey.data()!.response);
-    const doc = await db.collection('shipments').add(shipment);
-    const response = { id: doc.id, ...shipment };
-    await db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey).set({ response, createdAt: FieldValue.serverTimestamp() });
-    await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.created', shipmentNumber: internalReference, details: 'Shipment record created through authenticated API.', timestamp: FieldValue.serverTimestamp() });
-    return res.status(201).json(response);
+
+    const keyRef = db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey);
+    const shipmentRef = db.collection('shipments').doc();
+    const response = { id: shipmentRef.id, ...shipment };
+
+    const transactionResult = await db.runTransaction(async transaction => {
+      const existingKey = await transaction.get(keyRef);
+      if (existingKey.exists) return { response: existingKey.data()!.response, created: false };
+
+      transaction.create(shipmentRef, shipment);
+      transaction.create(keyRef, {
+        response,
+        shipmentId: shipmentRef.id,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return { response, created: true };
+    });
+
+    if (!transactionResult.created) return res.status(200).json(transactionResult.response);
+
+    await db.collection('auditLogs').add({
+      actorUid: req.user!.uid,
+      actorEmail: req.user!.email,
+      action: 'shipment.created',
+      shipmentNumber: internalReference,
+      details: 'Shipment record created through authenticated API.',
+      timestamp: FieldValue.serverTimestamp(),
+    });
+    return res.status(201).json(transactionResult.response);
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid shipment request.' });
   }
