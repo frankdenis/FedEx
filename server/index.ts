@@ -108,7 +108,7 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
     return tracking ? 'created' : 'processing';
   } catch (carrierError) {
     const message = carrierError instanceof Error ? carrierError.message : 'FedEx shipment creation failed.';
-    const match = message.match(/status (\\d+)/i);
+    const match = message.match(/status (\d+)/i);
     await shipmentRef.update({
       carrier: 'FedEx',
       carrierStatus: 'Creation Failed',
