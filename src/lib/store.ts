@@ -41,12 +41,6 @@ export function saveShipment(_shipment: Shipment): void {
   productionBackendRequired('shipment creation/update');
 }
 
-export function generateTrackingNumber(): string {
-  // Format: NX followed by 9 random digits, e.g. NX839204715
-  const randomDigits = Math.floor(100000000 + Math.random() * 900000000).toString();
-  return `NX${randomDigits}`;
-}
-
 export function updateShipmentStatus(
   _trackingNumber: string,
   _newStatus: TrackingStatus,
