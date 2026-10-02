@@ -2,13 +2,13 @@
 
 ## Architecture
 
-- Firebase Authentication handles identity and client sessions.
+- Supabase Auth handles identity and client sessions.
 - Express owns privileged business operations and validates requests.
-- Cloud Firestore is the operational database.
+- Supabase PostgreSQL is the operational database.
 - React calls `/api/*`; service-account credentials never enter the browser.
 - Payment, carrier rating/label, customs, and notifications are server-side integration boundaries.
 
-## Firestore collections
+## PostgreSQL collections
 
 - `users/{uid}` — customer/admin profile and account state.
 - `shipments/{shipmentId}` — shipment, parties, package, status, events, route and payment state.
@@ -31,9 +31,9 @@
 
 ## Security
 
-1. Firebase ID tokens are verified server-side.
+1. Supabase Auth bearer tokens are verified server-side.
 2. Customer shipment reads are scoped by `ownerUid`.
-3. Admin mutations require Firebase custom claim `admin=true`.
+3. Admin mutations require `profiles.role = 'admin'`.
 4. Service-account credentials remain server-side.
 5. Tracking and invoice numbers are generated server-side.
 6. The API never reports fake payment, label, delivery, or rate success.
@@ -77,3 +77,12 @@ Run this endpoint from a trusted scheduler/worker in production. Each job is tra
 
 Required environment:
 - `CARRIER_WORKER_SECRET`
+
+
+## Supabase
+
+The application uses Supabase Auth and PostgreSQL. Browser code receives only the publishable key; the service-role key is server-only. RLS is enabled on operational tables and the browser has no direct write access to shipments, payments, carrier jobs, audit logs, or idempotency records.
+
+The complete initial schema, indexes, RLS policies, authentication profile trigger, and transactional RPCs are in `supabase/schema.sql`.
+
+Critical multi-statement operations use PostgreSQL RPCs because Supabase client calls are individually transactional; application-level multi-query transactions are not assumed. The idempotent shipment creation and carrier claim paths therefore execute inside database functions.
