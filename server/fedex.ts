@@ -29,7 +29,12 @@ export async function fedexRequest<T>(path: string, payload: unknown, transactio
   const token = await getAccessToken();
   const response = await fetch(baseUrl + path, {
     method: 'POST',
-    headers: {\n      authorization: 'Bearer ' + token,\n      'content-type': 'application/json',\n      accept: 'application/json',\n      ...(transactionId ? { 'x-customer-transaction-id': transactionId } : {}),\n    },
+    headers: {
+      authorization: 'Bearer ' + token,
+      'content-type': 'application/json',
+      accept: 'application/json',
+      ...(transactionId ? { 'x-customer-transaction-id': transactionId } : {}),
+    },
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => null);
@@ -64,6 +69,7 @@ export async function createFedexShipment(input: {
   currency: string;
   declaredValue?: number;
   shipDate?: string;
+  transactionId?: string;
 }) {
   if (!fedexConfigured() || !process.env.FEDEX_ACCOUNT_NUMBER) {
     throw new Error('FedEx shipping credentials are not configured.');
@@ -96,6 +102,6 @@ export async function createFedexShipment(input: {
     accountNumber: { value: process.env.FEDEX_ACCOUNT_NUMBER },
     shipAction: 'CONFIRM',
     version: { major: '1', minor: '1', patch: '1' },
-  });
+  }, input.transactionId);
   return response;
 }
