@@ -25,23 +25,21 @@ Authentication now uses Firebase Authentication for real email/password account 
 
 Administrative access is based on a Firebase admin custom claim. The client does not grant administrator privileges through a hard-coded account or shortcut.
 
-## Important backend boundary
+## Production database/API foundation
 
-The current repository is a frontend application. Production transactional operations require a server/database API for:
+A server-side Express API and Firebase Admin integration now provide the first production data boundary:
 
-- Shipments and tracking events
-- Shipping rates and quotes
-- Customer/business profiles
-- Pickup scheduling
-- Payments
-- Invoices and documents
-- Support tickets
-- Notifications
-- Drivers and facilities
-- Server-side audit logging
-- Administrator authorization
+- Firebase Authentication verifies ID tokens server-side.
+- Cloud Firestore stores operational records.
+- Customer shipment reads are scoped to the authenticated owner.
+- Administrator shipment mutations require the `admin=true` Firebase custom claim.
+- Tracking and invoice identifiers are generated server-side.
+- Rate quotes are read from active production rate records; missing configuration returns an explicit error.
+- Public tracking responses are sanitized and do not expose sender/recipient contact data.
+- Firestore client rules deny direct browser access; operational data is accessed through the API.
+- Payment, carrier rating/label generation, customs, notifications, and webhooks remain explicit integration boundaries and are not faked.
 
-Until those services are connected, the affected client actions intentionally fail with an explicit production-backend-required message instead of creating fake records.
+See `docs/production-api.md` for the database collections, API surface, security model, and required environment variables.
 
 ## Responsive UX
 
@@ -71,6 +69,18 @@ The application is structured for:
 ```bash
 npm install
 npm run dev
+```
+
+Run the API separately during development:
+
+```bash
+npm run api
+```
+
+Or run frontend and API together:
+
+```bash
+npm run dev:full
 ```
 
 Production build:
