@@ -20,6 +20,6 @@ export const api = {
   shipments: () => request('/api/shipments'),
   shipment: (trackingNumber: string) => request('/api/shipments/' + encodeURIComponent(trackingNumber)),
   quote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request<{ price: number; estDaysMin: number; estDaysMax: number; currency: string; rateId: string }>('/api/quotes', { method: 'POST', body: JSON.stringify(input) }),
-  createShipment: (input: unknown) => request<{ id: string; trackingNumber: string }>('/api/shipments', { method: 'POST', body: JSON.stringify(input) }),
-  createPaymentCheckout: (shipmentId: string) => request<{ checkoutUrl: string | null; sessionId: string }>('/api/payments/checkout', { method: 'POST', body: JSON.stringify({ shipmentId }) }),
+  createShipment: (input: unknown, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ id: string; trackingNumber: string }>('/api/shipments', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input) }),
+  createPaymentCheckout: (shipmentId: string, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ checkoutUrl: string | null; sessionId: string }>('/api/payments/checkout', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ shipmentId }) }),
 };
