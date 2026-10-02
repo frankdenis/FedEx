@@ -2,57 +2,36 @@
 
 A React + TypeScript logistics web application for shipment tracking, shipping workflows, customer operations, fleet information, support, and authenticated administration.
 
-## Production-cleanup status
+## Production status
 
-This branch removes the previous demo-runtime architecture. Transactional users, shipments, invoices, pickups, tickets, notifications, rates, facilities, and audit records are **not seeded into the browser** and are not treated as authoritative client-side data.
+The repository has been cleaned of the former demo-runtime architecture. Browser-local mock operational data, seeded accounts, simulated payments, simulated shipment creation, fake labels/invoices, and localStorage operational persistence have been removed.
 
-### Removed from the runtime
+The current production foundation uses:
+- Supabase Auth for identity
+- Supabase PostgreSQL with Row Level Security
+- Express for privileged server operations
+- Stripe Checkout and signed webhooks
+- Official FedEx REST APIs
+- Durable carrier jobs with idempotent shipment creation
+- Motion-based responsive React UI
 
-- Seeded customer/admin accounts and one-click portal access
-- Sample shipment and invoice records
-- Demo pickup records
-- Hard-coded customer identities
-- Client-side operational-cache reset/synchronization
-- Simulated shipment status progression
-- Simulated payment and shipment creation
-- Simulated invoice/PDF/label downloads
-- localStorage as the operational datastore
-- Fake password-reset and registration flows
+The application is not considered production-live until a dedicated FedEx Supabase project, production payment/carrier credentials, rate configuration, worker scheduler, and deployment environment are configured and verified.
 
-### Authentication
+## Authentication
 
-Authentication now uses Supabase Auth for real email/password account creation, sign-in, persistent sessions, and password-reset email requests.
+Authentication uses Supabase Auth for real account creation, sign-in, persistent sessions, and password-reset requests.
 
-Administrative access is based on a Firebase admin custom claim. The client does not grant administrator privileges through a hard-coded account or shortcut.
+Administrative access is determined server-side from the user's Supabase profile role. The client cannot grant itself administrator privileges.
 
-## Production database/API foundation
+## Production database/API
 
-A server-side Express API and Supabase server client integration now provide the first production data boundary:
+The Express API and Supabase integration provide the production data boundary. Customer shipment reads are scoped to the authenticated owner, administrative operations require the admin profile role, quotes come only from configured production rate records, and public tracking responses are sanitized.
 
-- Supabase Auth verifies ID tokens server-side.
-- Supabase PostgreSQL stores operational records.
-- Customer shipment reads are scoped to the authenticated owner.
-- Administrator shipment mutations require the `admin=true` Supabase profile role.
-- Tracking and invoice identifiers are generated server-side.
-- Rate quotes are read from active production rate records; missing configuration returns an explicit error.
-- Public tracking responses are sanitized and do not expose sender/recipient contact data.
-- PostgreSQL Row Level Security (RLS) deny direct browser access; operational data is accessed through the API.
-- Payment, carrier rating/label generation, customs, notifications, and webhooks remain explicit integration boundaries and are not faked.
-
-See `docs/production-api.md` for the database collections, API surface, security model, and required environment variables.
+See docs/production-api.md and supabase/schema.sql for the architecture and database definition.
 
 ## Responsive UX
 
-The application is structured for:
-
-- Mobile phones
-- Tablets
-- Desktop and large displays
-- Touch-friendly controls
-- Horizontal scrolling for wide operational tables
-- Mobile-safe form sizing
-- Responsive modal/dialog behavior
-- Full-width layouts without forced desktop-mode rendering
+The application supports mobile phones, tablets, desktop displays, touch-friendly controls, responsive forms and dialogs, wide operational tables, and motion-based page/navigation/carousel transitions.
 
 ## Tech stack
 
@@ -60,51 +39,41 @@ The application is structured for:
 - TypeScript
 - Vite
 - Tailwind CSS
-- Supabase Auth
-- Lucide React
 - Motion
+- Lucide React
+- Express
+- Supabase Auth + PostgreSQL
+- Stripe
+- Official FedEx REST APIs
 
 ## Development
 
-```bash
 npm install
 npm run dev
-```
 
-Run the API separately during development:
+Run the API separately with npm run api, or run frontend and API together with npm run dev:full.
 
-```bash
-npm run api
-```
-
-Or run frontend and API together:
-
-```bash
-npm run dev:full
-```
-
-Production build:
-
-```bash
-npm run build
-```
-
-Type check:
-
-```bash
-npm run lint
-```
+Production frontend build: npm run build
+Type check: npm run lint
 
 ## Environment
 
-Firebase client configuration is supplied through the existing Supabase environment configuration used by the project. Enable the required Supabase Auth providers in the Supabase dashboard before accepting production sign-ups.
+Client configuration uses the Supabase URL and publishable key.
 
-The AI assistant still requires its configured Gemini runtime secret.
+Server-only configuration includes the Supabase service-role key, Stripe secrets, FedEx credentials, application URL/CORS origin, and carrier-worker secret.
+
+Do not commit credentials to the repository.
+
+## Carrier reliability
+
+Successful Stripe payment does not directly call FedEx from the browser. The verified webhook persists payment and queues a carrier job.
+
+A trusted worker calls POST /api/internal/carrier-jobs/process with the configured carrier-worker secret. Jobs are claimed transactionally and use a deterministic FedEx transaction identifier. Provider-side idempotency must still be verified against the production FedEx account before live shipment creation.
 
 ## Repository workflow
 
-Production cleanup work is being developed on the production-cleanup-responsive branch so the existing main branch remains unchanged until the changes are reviewed.
+The default branch is main. Production hardening is reviewed through pull requests before merge.
 
 ## Trademark notice
 
-FedEx, FedEx Express, and related marks are trademarks of Federal Express Corporation and its affiliates. This repository should only be used in accordance with the applicable rights, permissions, and branding requirements.
+FedEx, FedEx Express, and related marks are trademarks of Federal Express Corporation and its affiliates. This repository should only be used in accordance with applicable rights, permissions, and branding requirements.
