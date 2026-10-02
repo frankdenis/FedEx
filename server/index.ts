@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import { FieldValue } from 'firebase-admin/firestore';
-import { db } from './firebaseAdmin.js';
+import { FieldValue, db } from './db.js';
 import { requireAdmin, requireAuth } from './auth.js';
 import { assertAddress, assertPackage, assertService } from './validation.js';
 import Stripe from 'stripe';
@@ -40,53 +39,18 @@ app.use((req, res, next) => {
 app.use(limitRequests);
 
 async function enqueueCarrierJob(shipmentId: string): Promise<void> {
-  const jobRef = db.collection('carrierJobs').doc(shipmentId);
-  await db.runTransaction(async transaction => {
-    const existing = await transaction.get(jobRef);
-    if (existing.exists && ['queued', 'processing'].includes(String(existing.data()?.status))) return;
-    transaction.set(jobRef, {
-      shipmentId,
-      status: 'queued',
-      attempts: Number(existing.data()?.attempts || 0),
-      queuedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
-  });
+  await db.rpc('enqueue_carrier_job', { p_shipment_id: shipmentId });
 }
 
 async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'processing' | 'failed' | 'skipped'> {
-  const shipmentRef = db.collection('shipments').doc(shipmentId);
-  let carrierRequestId = '';
+  const claim = await db.rpc('claim_carrier_shipment', { p_shipment_id: shipmentId }) as any;
+  const claimResult = String(claim?.result || 'skipped');
+  if (claimResult === 'created' || claimResult === 'processing' || claimResult === 'skipped') return claimResult;
+  const carrierRequestId = String(claim?.carrierRequestId || ('fedex-' + shipmentId));
 
-  const claim = await db.runTransaction(async transaction => {
-    const snapshot = await transaction.get(shipmentRef);
-    if (!snapshot.exists) return 'skipped' as const;
-    const shipment = snapshot.data()!;
-    if (shipment.paymentStatus !== 'Paid') return 'skipped' as const;
-    if (shipment.trackingNumber || shipment.carrierStatus === 'Created') return 'created' as const;
-
-    const previousAttemptAt = shipment.carrierAttemptAt ? Date.parse(String(shipment.carrierAttemptAt)) : 0;
-    const processingIsFresh = shipment.carrierStatus === 'Processing' && previousAttemptAt > Date.now() - 10 * 60 * 1000;
-    if (processingIsFresh) return 'processing' as const;
-
-    carrierRequestId = String(shipment.carrierRequestId || ('fedex-' + shipment.internalReference));
-    transaction.update(shipmentRef, {
-      carrier: 'FedEx',
-      carrierStatus: 'Processing',
-      carrierRequestId,
-      carrierAttemptAt: new Date().toISOString(),
-      status: 'Payment Confirmed',
-      carrierErrorCode: FieldValue.delete(),
-      carrierErrorAt: FieldValue.delete(),
-    });
-    return 'claimed' as const;
-  });
-
-  if (claim === 'created' || claim === 'processing' || claim === 'skipped') return claim;
-
-  const snapshot = await shipmentRef.get();
-  if (!snapshot.exists) return 'skipped';
-  const shipment = snapshot.data()!;
+  const shipmentSnapshot = await db.collection('shipments').doc(shipmentId).get();
+  if (!shipmentSnapshot.exists) return 'skipped';
+  const shipment = shipmentSnapshot.data()!;
 
   try {
     const carrierResponse = await createFedexShipment({
@@ -103,7 +67,7 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
     const labelUrl = carrierOutput?.pieceResponses?.[0]?.packageDocuments?.[0]?.url || null;
     const carrierJobId = carrierResponse?.output?.jobId || carrierResponse?.jobId || null;
 
-    await shipmentRef.update({
+    await shipmentSnapshot.ref.update({
       carrier: 'FedEx',
       carrierStatus: tracking ? 'Created' : 'Submitted',
       carrierTrackingNumber: tracking,
@@ -112,19 +76,13 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
       carrierJobId,
       carrierRequestId,
       status: tracking ? 'Shipment Created' : 'Carrier Processing',
-      events: FieldValue.arrayUnion({
-        id: randomUUID(),
-        status: tracking ? 'Shipment Created' : 'Carrier Processing',
-        location: shipment.sender?.city || '',
-        timestamp: new Date().toISOString(),
-        description: tracking ? 'Shipment created with FedEx.' : 'FedEx accepted the shipment request for processing.',
-      }),
+      events: FieldValue.serverTimestamp(),
     });
     return tracking ? 'created' : 'processing';
   } catch (carrierError) {
     const message = carrierError instanceof Error ? carrierError.message : 'FedEx shipment creation failed.';
     const match = message.match(/status (\d+)/i);
-    await shipmentRef.update({
+    await shipmentSnapshot.ref.update({
       carrier: 'FedEx',
       carrierStatus: 'Creation Failed',
       status: 'Carrier Action Required',
@@ -204,12 +162,8 @@ app.post('/api/internal/carrier-jobs/process', async (req, res) => {
     const jobRef = job.ref;
     const shipmentId = String(job.data().shipmentId || '');
     if (!shipmentId) continue;
-    const claimed = await db.runTransaction(async transaction => {
-      const snapshot = await transaction.get(jobRef);
-      if (!snapshot.exists || snapshot.data()?.status !== 'queued') return false;
-      transaction.update(jobRef, { status: 'processing', startedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(), attempts: FieldValue.increment(1) });
-      return true;
-    });
+    const claimed = await db.rpc('claim_carrier_job', { p_shipment_id: shipmentId });
+    if (!claimed) continue;
     if (!claimed) continue;
     const result = await ensureFedexShipment(shipmentId);
     await jobRef.update({ status: result === 'created' || result === 'processing' ? 'completed' : 'failed', result, updatedAt: FieldValue.serverTimestamp() });
@@ -354,24 +308,16 @@ app.post('/api/shipments', requireAuth, async (req, res) => {
     const idempotencyKey = req.header('Idempotency-Key');
     if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return res.status(400).json({ error: 'A valid Idempotency-Key is required.' });
 
-    const keyRef = db.collection('idempotencyKeys').doc(req.user!.uid + ':' + idempotencyKey);
-    const shipmentRef = db.collection('shipments').doc();
-    const response = { id: shipmentRef.id, ...shipment };
+    const shipmentId = randomUUID();
+    const response = { id: shipmentId, ...shipment };
+    const transactionResult = await db.rpc('create_shipment_idempotent', {
+      p_key: req.user!.uid + ':' + idempotencyKey,
+      p_owner_uid: req.user!.uid,
+      p_shipment: response,
+    }) as any;
 
-    const transactionResult = await db.runTransaction(async transaction => {
-      const existingKey = await transaction.get(keyRef);
-      if (existingKey.exists) return { response: existingKey.data()!.response, created: false };
-
-      transaction.create(shipmentRef, shipment);
-      transaction.create(keyRef, {
-        response,
-        shipmentId: shipmentRef.id,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-      return { response, created: true };
-    });
-
-    if (!transactionResult.created) return res.status(200).json(transactionResult.response);
+    if (!transactionResult) return res.status(500).json({ error: 'Shipment creation failed.' });
+    return res.status(transactionResult.id === shipmentId ? 201 : 200).json(transactionResult);
 
     await db.collection('auditLogs').add({
       actorUid: req.user!.uid,
