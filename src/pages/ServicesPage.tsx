@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SERVICES_CATALOG } from '../data/mockData';
+import { SERVICES_CATALOG } from '../data/siteContent';
 import {
   Plane,
   Truck,
