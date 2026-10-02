@@ -255,3 +255,8 @@ after insert on auth.users
 for each row execute procedure public.handle_new_user();
 
 revoke all on function public.handle_new_user() from public, anon, authenticated;
+
+grant execute on function public.claim_carrier_job(uuid) to service_role;
+grant execute on function public.enqueue_carrier_job(uuid) to service_role;
+grant execute on function public.create_shipment_idempotent(text,uuid,jsonb) to service_role;
+grant execute on function public.claim_carrier_shipment(uuid) to service_role;
