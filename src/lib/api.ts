@@ -1,0 +1,24 @@
+import { auth } from './firebase';
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const user = auth.currentUser;
+  const token = user ? await user.getIdToken() : null;
+  const response = await fetch(API_BASE_URL + path, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(init.headers || {}) },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'API request failed (' + response.status + ').');
+  return payload as T;
+}
+
+export const api = {
+  health: () => request<{ ok: boolean; service: string; version: string }>('/api/health'),
+  me: () => request('/api/me'),
+  shipments: () => request('/api/shipments'),
+  shipment: (trackingNumber: string) => request('/api/shipments/' + encodeURIComponent(trackingNumber)),
+  quote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request('/api/quotes', { method: 'POST', body: JSON.stringify(input) }),
+  createShipment: (input: unknown) => request('/api/shipments', { method: 'POST', body: JSON.stringify(input) }),
+};
