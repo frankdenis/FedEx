@@ -94,7 +94,6 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
         pickupOption,
         pickupDate,
         paymentMethod,
-        cost: quote.price,
       });
       setCreatedShipment(created as Shipment);
       const checkout = await api.createPaymentCheckout(created.id);
