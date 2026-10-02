@@ -253,7 +253,7 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', o
                   {selectedShipment.estimatedDelivery}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  Scheduled arrival by 18:00
+                  Carrier-provided delivery schedule
                 </div>
               </div>
 
