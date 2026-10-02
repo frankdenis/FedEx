@@ -16,40 +16,12 @@ import {
   InvoiceItem,
 } from '../types';
 import { auth, mapFirebaseUser } from './firebase';
-const STORAGE_KEYS = {
-  CURRENT_USER: 'fedex_current_user_session',
-};
-
 // Broadcast event to notify all listening components across tabs / views
 export function notifyStoreChange() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('fedex-storage-update'));
     window.dispatchEvent(new CustomEvent('nexora-storage-update'));
   }
-}
-
-function getItem<T>(key: string, defaultValue: T): T {
-  if (typeof window === 'undefined') return defaultValue;
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) as T : defaultValue;
-  } catch {
-    return defaultValue;
-  }
-}
-
-function setItem<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    notifyStoreChange();
-  } catch {
-    // Persistence is best-effort only. Server-backed data must never depend on it.
-  }
-}
-
-function productionBackendRequired(operation: string): never {
-  throw new Error(`Production backend required: ${operation} is not available in the client-only build.`);
 }
 
 let currentUserSession: User | null = null;
@@ -224,7 +196,7 @@ export const getAddresses = (userId?: string) => getSavedAddresses(userId);
 export const addAddress = saveAddress;
 export const getSupportTickets = getTickets;
 
-export function addSupportTicket(ticket: {
+export function addSupportTicket(_ticket: {
   id?: string;
   userId?: string;
   subject: string;
@@ -235,38 +207,15 @@ export function addSupportTicket(ticket: {
   message: string;
   trackingNumber?: string;
 }): SupportTicket {
-  const categoryMap: Record<string, SupportTicket['category']> = {
-    tracking: 'Tracking',
-    shipping: 'Shipping',
-    billing: 'Payments',
-    customs: 'Customs',
-  };
-  const priorityMap: Record<string, SupportTicket['priority']> = {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'Urgent',
-  };
-
-  return addTicket({
-    customerName: 'Sarah Jenkins',
-    customerEmail: 's.jenkins@apex-biohealth.com',
-    subject: ticket.subject,
-    category: categoryMap[ticket.category] || 'Tracking',
-    priority: priorityMap[ticket.priority] || 'Medium',
-    status: 'Open',
-    message: ticket.message,
-    trackingNumber: ticket.trackingNumber,
-  });
+  return productionBackendRequired('support ticket creation');
 }
 
 export function getPickupRequests(): PickupRequest[] {
   return [];
 }
 
-export function addPickupRequest(pickup: PickupRequest): void {
-  const pickups = getPickupRequests();
-  pickups.unshift(pickup);
-  setItem('nexora_pickups', pickups);
+export function addPickupRequest(_pickup: PickupRequest): void {
+  productionBackendRequired('pickup scheduling');
 }
 
 export function getInvoices(): InvoiceItem[] {
@@ -278,4 +227,3 @@ export function syncOperationalCache(): void {
   productionBackendRequired('operational synchronization');
 }
 
-export const resetDemoData = syncOperationalCache;
