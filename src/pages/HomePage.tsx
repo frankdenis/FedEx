@@ -38,7 +38,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const [quickOrigin, setQuickOrigin] = useState('United States');
   const [quickDest, setQuickDest] = useState('Germany');
   const [quickWeight, setQuickWeight] = useState('5');
-  const [quickResult, setQuickResult] = useState<{ express: number; standard: number } | null>(null);
 
   const handleTrackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +76,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   useEffect(() => {
     const timer = window.setInterval(() => setActiveSlide(current => (current + 1) % serviceSlides.length), 6000);
     return () => window.clearInterval(timer);
-  }, [serviceSlides.length]);
+  }, []);
 
   return (
     <div className="space-y-16 sm:space-y-24">
