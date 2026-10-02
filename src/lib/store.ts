@@ -26,6 +26,10 @@ export function notifyStoreChange() {
 
 let currentUserSession: User | null = null;
 
+function productionBackendRequired<T = never>(operation: string): T {
+  throw new Error(`Production backend required for ${operation}.`);
+}
+
 // ---------------- SHIPMENTS ----------------
 export function getShipments(): Shipment[] {
   return [];
@@ -167,7 +171,7 @@ export function markAllNotificationsAsRead(): void {
 
 // ---------------- SAVED ADDRESSES ----------------
 export function getSavedAddresses(userEmail?: string): SavedAddress[] {
-  const addresses = [];
+  const addresses: SavedAddress[] = [];
   if (!userEmail) return addresses;
   return addresses.filter(a => a.userId.toLowerCase() === userEmail.toLowerCase());
 }
