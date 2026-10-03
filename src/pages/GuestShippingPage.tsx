@@ -7,6 +7,7 @@ interface Props { onNavigate: (path: string) => void; }
 export const GuestShippingPage: React.FC<Props> = ({ onNavigate }) => {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState('');
   const [request, setRequest] = useState<any>(null);
   const [f, setF] = useState({
