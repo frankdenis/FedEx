@@ -195,13 +195,25 @@ app.post('/api/guest/requests', async (req,res)=>{
 });
 
 app.get('/api/guest/requests/:id', async (req,res)=>{
-  const email=String(req.query.email||'').trim().toLowerCase(); const snapshot=await db.collection('guestShippingRequests').doc(req.params.id.trim()).get();
+  const email=String(req.query.email||'').trim().toLowerCase();
+  const key=String(req.params.id||'').trim();
+  let snapshot=await db.collection('guestShippingRequests').doc(key).get();
+  if(!snapshot.exists && key){
+    const matches=await db.collection('guestShippingRequests').where('requestNumber','==',key.toUpperCase()).limit(1).get();
+    if(!matches.empty) snapshot=matches.docs[0];
+  }
   if(!snapshot.exists||!email||String(snapshot.data()?.email||'').toLowerCase()!==email) return res.status(404).json({error:'Request not found.'});
-  const d=snapshot.data()!; return res.json({id:req.params.id,requestNumber:d.requestNumber,status:d.status,verificationStatus:d.verificationStatus,paymentStatus:d.paidAt?'Paid':'Pending',messages:d.messages||[],quotedCost:d.quotedCost||null,currency:d.currency||null});
+  const d=snapshot.data()!;
+  return res.json({id:d.id||key,requestNumber:d.requestNumber,status:d.status,verificationStatus:d.verificationStatus,paymentStatus:d.paidAt?'Paid':'Pending',messages:d.messages||[],quotedCost:d.quotedCost||null,currency:d.currency||null});
 });
 
 app.post('/api/guest/requests/:id/messages', async (req,res)=>{
-  const email=String(req.body?.email||'').trim().toLowerCase(); const ref=db.collection('guestShippingRequests').doc(req.params.id.trim()); const snapshot=await ref.get();
+  const email=String(req.body?.email||'').trim().toLowerCase(); const key=String(req.params.id||'').trim();
+  let ref=db.collection('guestShippingRequests').doc(key); let snapshot=await ref.get();
+  if(!snapshot.exists && key){
+    const matches=await db.collection('guestShippingRequests').where('requestNumber','==',key.toUpperCase()).limit(1).get();
+    if(!matches.empty){ snapshot=matches.docs[0]; ref=snapshot.ref!; }
+  }
   if(!snapshot.exists||!email||String(snapshot.data()?.email||'').toLowerCase()!==email) return res.status(404).json({error:'Request not found.'});
   const body=String(req.body?.body||'').trim(), paymentReference=String(req.body?.paymentReference||'').trim();
   if(!body&&!paymentReference) return res.status(400).json({error:'Message or payment reference is required.'});
@@ -498,7 +510,10 @@ app.post('/api/admin/guest-requests/:requestId/decision', requireAuth, requireAd
   const request=snapshot.data()!;
   const now=new Date().toISOString();
   if(decision==='approve'){
-    await ref.update({status:'approved',verificationStatus:'passed',verificationNotes:String(req.body?.note||'Approved by operations after manual review.'),updatedAt:now,messages:FieldValue.arrayUnion({id:randomUUID(),sender:'Operations',body:String(req.body?.note||'Your request has been approved after manual review.'),timestamp:now})});
+    if(!request.paidAt || request.status !== 'paid_pending_review'){
+      return res.status(409).json({error:'Payment must be confirmed before an approved guest request can proceed to fulfillment.'});
+    }
+    await ref.update({status:'approved',verificationStatus:'passed',verificationNotes:String(req.body?.note||'Approved by operations after manual review.'),updatedAt:now,messages:FieldValue.arrayUnion({id:randomUUID(),sender:'Operations',body:String(req.body?.note||'Your request has been approved after payment confirmation and manual review.'),timestamp:now})});
   }else{
     await ref.update({status:'declined',verificationStatus:'failed',verificationNotes:String(req.body?.note||'Request declined after manual review.'),updatedAt:now,messages:FieldValue.arrayUnion({id:randomUUID(),sender:'Operations',body:String(req.body?.note||'Your request was declined after manual review.'),timestamp:now})});
   }
