@@ -76,9 +76,9 @@ function encodeObject(input:any){
   return out;
 }
 
-function decodeRow(row:any):any {
+function decodeRow(name:string,row:any):any {
   if(!row) return null;
-  const out:any={id:row.id};
+  const out:any={id:row[keyColumn(name)]};
   for(const [k,v] of Object.entries(row)){
     const camel = Object.entries(columnMap).find(([,db])=>db===k)?.[0] || k;
     out[camel]=v;
