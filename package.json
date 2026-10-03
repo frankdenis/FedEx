@@ -23,7 +23,7 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^8.3.0",
-    "stripe": "^19.1.0",
+    "stripe": "^22.6.0",
     "@supabase/supabase-js": "^2.75.0"
   },
   "devDependencies": {
