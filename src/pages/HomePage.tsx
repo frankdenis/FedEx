@@ -68,8 +68,17 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     { title: 'Smarter Logistics. Smoother Delivery.', eyebrow: 'Connected logistics', copy: 'Track shipments, coordinate international movement and keep every delivery visible from pickup to destination.', image: LOGISTICS_IMAGES.airportTarmac, path: '/services/international', accent: 'from-[#10152b]/95 via-[#4D148C]/45 to-transparent' },
   ];
   const [activeSlide, setActiveSlide] = useState(0);
+  const agentSlides = [
+    { src: '/images/homepage/agent-01.jpg', alt: 'Professional logistics operations agent — image one' },
+    { src: '/images/homepage/agent-02.jpg', alt: 'Professional logistics operations agent — image two' },
+  ];
+  const [agentSlide, setAgentSlide] = useState(0);
   useEffect(() => {
     const timer = window.setInterval(() => setActiveSlide(current => (current + 1) % serviceSlides.length), 6000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    const timer = window.setInterval(() => setAgentSlide(current => (current + 1) % agentSlides.length), 5200);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -191,34 +200,53 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             </motion.div>
 
             <div className="relative min-h-[520px] sm:min-h-[590px] lg:min-h-[630px]">
-              {/* Professional logistics agent portrait */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.96, y: 24 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute inset-x-8 sm:inset-x-14 lg:inset-x-12 bottom-0 top-8 overflow-hidden rounded-[2.5rem] border border-white/80 bg-slate-100 shadow-[0_35px_90px_rgba(77,20,140,0.20)]"
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1100&q=88"
-                  alt="Professional logistics operations agent"
-                  referrerPolicy="no-referrer"
-                  className="h-full w-full object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#18052D]/75 via-transparent to-white/5" />
-                <div className="absolute inset-0 bg-gradient-to-r from-white/15 via-transparent to-[#4D148C]/10" />
-                <div className="absolute bottom-6 left-6 right-6 rounded-2xl border border-white/20 bg-slate-950/55 p-4 text-white backdrop-blur-xl">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-300">Operations agent</div>
-                      <div className="mt-1 text-sm font-extrabold">Global shipment desk</div>
+              {/* Framer-style professional agent image carousel */}
+              <div className="absolute inset-x-8 sm:inset-x-14 lg:inset-x-12 bottom-0 top-8">
+                <div className="relative h-full overflow-hidden rounded-[2.5rem] border border-white/90 bg-slate-100 shadow-[0_35px_90px_rgba(77,20,140,0.20)]">
+                  <AnimatePresence initial={false} mode="sync">
+                    <motion.img
+                      key={agentSlides[agentSlide].src}
+                      src={agentSlides[agentSlide].src}
+                      alt={agentSlides[agentSlide].alt}
+                      initial={{ opacity: 0, scale: 1.035, filter: 'blur(3px)' }}
+                      animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                      exit={{ opacity: 0, scale: 1.015, filter: 'blur(2px)' }}
+                      transition={{ opacity: { duration: 0.65 }, scale: { duration: 5.2, ease: 'easeOut' }, filter: { duration: 0.65 } }}
+                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </AnimatePresence>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#18052D]/72 via-transparent to-white/5 pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-[#4D148C]/12 pointer-events-none" />
+                  <div className="absolute left-5 right-5 bottom-5 z-10 rounded-2xl border border-white/20 bg-slate-950/55 p-4 text-white backdrop-blur-xl">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-300">Operations agent</div>
+                        <div className="mt-1 text-sm font-extrabold">Global shipment desk</div>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-300">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                        Live
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-300">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                      Live
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="flex gap-1.5">
+                        {agentSlides.map((slide, index) => (
+                          <button
+                            key={slide.src}
+                            type="button"
+                            aria-label={`Show agent image ${index + 1}`}
+                            onClick={() => setAgentSlide(index)}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${index === agentSlide ? 'w-8 bg-[#FF6600]' : 'w-3 bg-white/45 hover:bg-white/75'}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[9px] font-semibold uppercase tracking-wider text-white/60">Auto slide</span>
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
 
               {/* Animated tracking command card */}
               <motion.div
