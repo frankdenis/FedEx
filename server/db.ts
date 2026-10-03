@@ -55,7 +55,8 @@ const columnMap: Record<string,string> = {
   lastName: 'last_name',
 };
 
-function tableName(name:string){ return tableMap[name] || name; }\nfunction keyColumn(name:string){ return keyMap[name] || 'id'; }
+function tableName(name:string){ return tableMap[name] || name; }
+function keyColumn(name:string){ return keyMap[name] || 'id'; }
 function col(name:string){ return columnMap[name] || name; }
 
 function encodeValue(value:any):any {
