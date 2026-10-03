@@ -113,6 +113,57 @@ create index if not exists idempotency_keys_owner_uid_idx on public.idempotency_
 create index if not exists idempotency_keys_shipment_id_idx on public.idempotency_keys(shipment_id);
 create index if not exists shipments_rate_id_idx on public.shipments(rate_id);
 
+create table if not exists public.guest_shipping_requests (
+  id uuid primary key default gen_random_uuid(),
+  request_number text not null unique,
+  status text not null default 'details_submitted' check (status in ('details_submitted','awaiting_payment','paid_pending_review','approved','declined')),
+  verification_status text not null default 'pending' check (verification_status in ('pending','manual_review','passed','failed')),
+  verification_notes text,
+  first_name text not null,
+  last_name text not null,
+  email text not null,
+  phone text not null,
+  sender jsonb not null,
+  recipient jsonb not null,
+  package_info jsonb not null,
+  selected_service text,
+  quoted_cost numeric(14,2),
+  currency text,
+  rate_id uuid references public.shipping_rates(id),
+  stripe_session_id text,
+  payment_reference text,
+  paid_at timestamptz,
+  payment_proof text,
+  messages jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists guest_requests_email_idx on public.guest_shipping_requests(lower(email));
+create index if not exists guest_requests_status_idx on public.guest_shipping_requests(status, created_at desc);
+
+create table if not exists public.site_settings (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+insert into public.site_settings(key,value)
+values
+('homepage', jsonb_build_object(
+  'headline','Your World',
+  'accent','Our Priority',
+  'copy','A brighter command center for shipping, tracking and delivery coordination across your network.',
+  'heroImage','https://images.pexels.com/photos/6169659/pexels-photo-6169659.jpeg?cs=srgb&dl=pexels-tima-miroshnichenko-6169659.jpg&fm=jpg'
+))
+on conflict (key) do nothing;
+
+alter table public.guest_shipping_requests enable row level security;
+alter table public.site_settings enable row level security;
+
+-- Guest requests and site settings are server-controlled. No direct client mutations.
+
 alter table public.profiles enable row level security;
 alter table public.shipping_rates enable row level security;
 alter table public.shipments enable row level security;
