@@ -228,7 +228,7 @@ app.post('/api/guest/quotes', async (req,res)=>{
     const rates=await db.collection('shippingRates').where('service','==',req.body.service).where('originCountry','==',req.body.originCountry).where('destCountry','==',req.body.destCountry).where('active','==',true).limit(1).get();
     if(rates.empty) return res.status(503).json({error:'No configured production rate is available for this route.'});
     const rate=rates.docs[0].data(), price=Math.round((Number(rate.baseRate)+Number(rate.perKgRate)*req.body.weightKg)*100)/100;
-    return res.json({price,estDaysMin:Number(rate.estDaysMin),estDaysMax:Number(rate.estDaysMax),currency:rate.currency||'USD',rateId:rates.docs[0].id});
+    return res.json({price,baseRate:Number(rate.baseRate),perKgRate:Number(rate.perKgRate),weightKg:req.body.weightKg,estDaysMin:Number(rate.estDaysMin),estDaysMax:Number(rate.estDaysMax),currency:rate.currency||'USD',rateId:rates.docs[0].id});
   }catch(e){return res.status(400).json({error:e instanceof Error?e.message:'Invalid quote request.'})}
 });
 
