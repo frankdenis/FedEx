@@ -12,7 +12,9 @@ const tableMap: Record<string,string> = {
   supportMessages: 'support_messages',
 };
 
-const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
+const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
+
+const columnMap: Record<string,string> = {
   ownerUid: 'owner_uid',
   userId: 'user_id',
   threadId: 'thread_id',
