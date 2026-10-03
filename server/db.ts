@@ -12,8 +12,6 @@ const tableMap: Record<string,string> = {
   supportMessages: 'support_messages',
   guestShippingRequests: 'guest_shipping_requests',
   siteSettings: 'site_settings',
-  guestShippingRequests: 'guest_shipping_requests',
-  siteSettings: 'site_settings',
 };
 
 const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
