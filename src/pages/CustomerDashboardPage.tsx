@@ -1,640 +1,213 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Package,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Plus,
-  Search,
-  Filter,
-  ArrowRight,
-  Printer,
-  Download,
-  Trash2,
-  Edit2,
-  Calendar,
-  CreditCard,
-  Bell,
-  MapPin,
-  Truck,
-  ExternalLink,
-  HardDrive,
-} from 'lucide-react';
-import {
-  getCurrentUser,
-  getShipments,
-  getAddresses,
-  addAddress,
-  deleteAddress,
-  getPickupRequests,
-  addPickupRequest,
-  getInvoices,
-} from '../lib/store';
-import { Shipment, SavedAddress, PickupRequest } from '../types';
-import { StatusBadge } from '../components/common/StatusBadge';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Activity, ArrowRight, Bell, CheckCircle2, ChevronRight, CircleHelp, CreditCard, LogOut, MessageSquare, Package, RefreshCw, Search, ShieldCheck, Truck, UserRound } from 'lucide-react';
+import { motion } from 'motion/react';
+import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
-interface CustomerDashboardPageProps {
-  onNavigate: (path: string) => void;
-}
+interface Props { onNavigate: (path: string) => void; }
 
-export const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ onNavigate }) => {
-  const [currentUser, setCurrentUser] = useState(getCurrentUser());
-  const [activeTab, setActiveTab] = useState<'overview' | 'shipments' | 'addresses' | 'pickups' | 'billing'>('overview');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+export const CustomerDashboardPage: React.FC<Props> = ({ onNavigate }) => {
+  const [me, setMe] = useState<any>(null);
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [threads, setThreads] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview'|'shipments'|'communication'>('overview');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  // Address book state
-  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [newAddr, setNewAddr] = useState({
-    name: '',
-    company: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'United States',
-    isDefault: false,
-  });
-
-  // Pickups state
-  const [pickups, setPickups] = useState<PickupRequest[]>([]);
-  const [showPickupModal, setShowPickupModal] = useState(false);
-  const [newPickup, setNewPickup] = useState({
-    pickupDate: '2026-09-23',
-    timeSlot: '13:00 - 17:00' as const,
-    locationAddress: '450 Mission Street, Suite 1200, San Francisco, CA',
-    packageCount: 2,
-    totalWeightKg: 8.5,
-    specialInstructions: 'Ring Suite 1200 buzzer at service elevator.',
-  });
-
-  const [invoices, setInvoices] = useState(getInvoices());
-
-  const refreshData = () => {
-    setCurrentUser(getCurrentUser());
-    setAddresses(getAddresses());
-    setPickups(getPickupRequests());
-    setInvoices(getInvoices());
+  const load = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const profile = await api.me();
+      setMe(profile);
+      const shipmentResponse: any = await api.shipments();
+      const list = Array.isArray(shipmentResponse) ? shipmentResponse : (shipmentResponse?.shipments || []);
+      setShipments(list);
+      const support = await api.supportThreads().catch(() => []);
+      setThreads(Array.isArray(support) ? support : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Your account workspace could not be loaded.');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  useEffect(() => {
-    refreshData();
-    window.addEventListener('fedex-storage-update', refreshData);
-    window.addEventListener('nexora-storage-update', refreshData);
-    return () => {
-      window.removeEventListener('fedex-storage-update', refreshData);
-      window.removeEventListener('nexora-storage-update', refreshData);
-    };
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const allShipments = getShipments();
-  // Only server-backed customer shipments are displayed
-  const filteredShipments = allShipments.filter(s => {
-    const matchesSearch =
-      (s.trackingNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.recipient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.recipient.city.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const activeCount = useMemo(() => shipments.filter(s => !['Delivered','Cancelled','Shipment Cancelled'].includes(String(s.status || ''))).length, [shipments]);
+  const deliveredCount = useMemo(() => shipments.filter(s => String(s.status || '') === 'Delivered').length, [shipments]);
+  const paidCount = useMemo(() => shipments.filter(s => String(s.paymentStatus || '').toLowerCase() === 'paid').length, [shipments]);
 
-  const activeCount = allShipments.filter(s => s.status !== 'Delivered' && s.status !== 'Shipment Cancelled').length;
-  const deliveredCount = allShipments.filter(s => s.status === 'Delivered').length;
-  const pendingPickupCount = pickups.filter(p => p.status === 'scheduled').length;
-  const exceptionCount = allShipments.filter(s => s.status === 'Exception' || s.status === 'Shipment Delayed').length;
-
-  const handleSaveAddress = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAddr.name || !newAddr.address || !newAddr.city) return;
-
-    addAddress({
-      id: `addr_${Date.now()}`,
-      userId: currentUser?.id || '',
-      ...newAddr,
-    });
-    setShowAddressModal(false);
-    setNewAddr({
-      name: '',
-      company: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'United States',
-      isDefault: false,
-    });
+  const openSupport = async () => {
+    if (subject.trim().length < 3 || !message.trim()) {
+      setError('Add a subject and message before opening a support conversation.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await api.supportCreateThread({ subject: subject.trim(), body: message.trim(), priority: 'normal' });
+      setSubject('');
+      setMessage('');
+      setActiveTab('communication');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Support conversation could not be created.');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleSchedulePickup = (e: React.FormEvent) => {
-    e.preventDefault();
-    addPickupRequest({
-      id: `pickup_${Date.now()}`,
-      userId: currentUser?.id || '',
-      ...newPickup,
-      status: 'scheduled',
-      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-    });
-    setShowPickupModal(false);
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    onNavigate('/login');
   };
+
+  if (error && !me) {
+    return (
+      <div className="min-h-[72vh] bg-[#f7faff] px-4 py-14 sm:px-6">
+        <div className="mx-auto max-w-lg rounded-[30px] border border-[#dfe6f0] bg-white p-8 text-center shadow-[0_30px_80px_rgba(31,48,91,.12)]">
+          <ShieldCheck className="mx-auto h-10 w-10 text-[#4D148C]" />
+          <h1 className="mt-4 text-2xl font-black text-[#14265e]">Sign in to your customer workspace</h1>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[#73819c]">{error}</p>
+          <button onClick={() => onNavigate('/login')} className="mt-6 rounded-2xl bg-[#4D148C] px-6 py-3 text-sm font-black text-white">Continue with Google / Gmail</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Top Banner with User Greeting & Quick Actions */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#FF6600]">
-              Customer Operations Portal
-            </span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
-              Account Active
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1 font-display">
-            Welcome back, {currentUser?.firstName || 'Sarah'} {currentUser?.lastName || 'Jenkins'}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {currentUser?.company || 'Apex BioHealth Logistics'} • FedEx Account #FDX-94819
-          </p>
-        </div>
-
-        {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => onNavigate('/ship')}
-            className="px-4 py-2.5 rounded-xl bg-[#4D148C] hover:bg-purple-900 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Ship a Package
-          </button>
-          <button
-            onClick={() => setShowPickupModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
-          >
-            <Truck className="w-4 h-4" /> Schedule Pickup
-          </button>
-          <button
-            onClick={() => onNavigate('/quote')}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors"
-          >
-            Get a Quote
-          </button>
-          <button
-            onClick={() => onNavigate('/drive')}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-1.5"
-          >
-            <HardDrive className="w-4 h-4 text-amber-500" /> Drive Archive
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">In-Transit Shipments</span>
-            <Package className="w-4 h-4 text-cyan-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">{activeCount}</div>
-          <span className="text-[11px] text-cyan-700 font-medium">Tracking in live corridors</span>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Delivered This Month</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">{deliveredCount}</div>
-          <span className="text-[11px] text-emerald-700 font-medium">100% on-time commitment</span>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Pending Courier Pickups</span>
-            <Clock className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">{pendingPickupCount}</div>
-          <span className="text-[11px] text-blue-700 font-medium">Doorstep dispatch scheduled</span>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Transit Exceptions</span>
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">{exceptionCount}</div>
-          <span className="text-[11px] text-amber-700 font-medium">Weather / Customs review</span>
-        </div>
-      </div>
-
-      {/* Navigation Sub-Tabs */}
-      <div className="border-b border-slate-200 flex items-center gap-6 text-sm font-semibold overflow-x-auto no-scrollbar">
-        {[
-          { id: 'overview', label: 'All Shipments' },
-          { id: 'addresses', label: 'Address Book' },
-          { id: 'pickups', label: 'Pickup Requests' },
-          { id: 'billing', label: 'Billing & Invoices' },
-        ].map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id as any)}
-            className={`pb-3 whitespace-nowrap transition-colors border-b-2 -mb-[2px] ${
-              activeTab === t.id
-                ? 'border-cyan-600 text-cyan-600 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* TAB 1: SHIPMENTS TABLE */}
-      {(activeTab === 'overview' || activeTab === 'shipments') && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pb-2">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Search tracking, recipient, city..."
-                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Filter Status:</span>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="text-xs p-2 rounded-xl border border-slate-300 bg-white"
-              >
-                <option>All</option>
-                <option>In Transit</option>
-                <option>Delivered</option>
-                <option>Out for Delivery</option>
-                <option>Customs Clearance</option>
-                <option>Exception</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600 divide-y divide-slate-100">
-              <thead>
-                <tr className="text-[10px] font-mono uppercase text-slate-400 font-semibold">
-                  <th className="py-3 px-3">Tracking Number</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Service</th>
-                  <th className="py-3 px-3">Recipient</th>
-                  <th className="py-3 px-3">Destination</th>
-                  <th className="py-3 px-3">Est. Delivery</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredShipments.map(s => (
-                  <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-3">
-                      <button
-                        onClick={() => onNavigate(`/track?q=${s.trackingNumber}`)}
-                        className="font-mono font-bold text-cyan-700 hover:text-cyan-900 underline"
-                      >
-                        {s.trackingNumber}
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <StatusBadge status={s.status} size="sm" />
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-900">
-                      {s.service}
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-900">
-                      {s.recipient.name}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      {s.recipient.city}, {s.recipient.country}
-                    </td>
-                    <td className="py-3.5 px-3 font-mono">
-                      {s.estimatedDelivery}
-                    </td>
-                    <td className="py-3.5 px-3 text-right space-x-2">
-                      <button
-                        onClick={() => onNavigate(`/track?q=${s.trackingNumber}`)}
-                        className="p-1.5 rounded-lg hover:bg-cyan-50 text-cyan-700 font-semibold text-[11px]"
-                        title="Live Map & Telemetry"
-                      >
-                        Track
-                      </button>
-                      
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: ADDRESS BOOK */}
-      {activeTab === 'addresses' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-slate-900">Saved Address Directory</h2>
-            <button
-              onClick={() => setShowAddressModal(true)}
-              className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Add New Address
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {addresses.map(addr => (
-              <div
-                key={addr.id}
-                className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-sm text-slate-900">{addr.name}</span>
-                    {addr.isDefault && (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 font-bold border border-cyan-100">
-                        Default
-                      </span>
-                    )}
-                  </div>
-                  {addr.company && <div className="text-xs text-slate-500 font-medium">{addr.company}</div>}
-                  <div className="text-xs text-slate-600 mt-2 space-y-0.5">
-                    <p>{addr.address}</p>
-                    <p>{addr.city}, {addr.state} {addr.postalCode}</p>
-                    <p className="font-semibold text-slate-700">{addr.country}</p>
-                    <p className="text-slate-400 mt-1">{addr.phone}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                  <button
-                    onClick={() => onNavigate('/ship')}
-                    className="text-cyan-700 font-semibold hover:underline"
-                  >
-                    Ship to this address →
-                  </button>
-                  <button
-                    onClick={() => deleteAddress(addr.id)}
-                    className="text-slate-400 hover:text-rose-600 p-1"
-                    title="Delete address"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+    <div className="min-h-screen bg-[#f6f9ff] text-[#14265e]">
+      <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 lg:px-8">
+        <header className="overflow-hidden rounded-[32px] bg-white border border-[#dfe6f0] shadow-[0_24px_70px_rgba(28,47,88,.09)]">
+          <div className="flex flex-col gap-5 px-6 py-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-[#4D148C] to-[#7c2bd8] text-white shadow-lg"><UserRound className="h-5 w-5"/></div>
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[.16em] text-[#4D148C]">Customer workspace</div>
+                <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">{me?.profile?.firstName ? 'Welcome, ' + me.profile.firstName : 'Welcome back'}</h1>
+                <p className="mt-1 text-xs font-bold text-[#78869f]">{me?.email || 'Google / Gmail account'} · Production data only</p>
               </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => onNavigate('/guest-shipping')} className="rounded-xl bg-gradient-to-r from-[#4D148C] to-[#7925dc] px-4 py-3 text-xs font-black text-white shadow-lg">Ship a Package <ArrowRight className="ml-1 inline h-3.5 w-3.5 text-[#ff9a5b]"/></button>
+              <button onClick={() => onNavigate('/quote')} className="rounded-xl border border-[#d7dfeb] bg-white px-4 py-3 text-xs font-black text-[#2d3d67]">Shipping Calculator</button>
+              <button onClick={signOut} className="rounded-xl border border-[#d7dfeb] bg-white px-4 py-3 text-xs font-black text-[#2d3d67]"><LogOut className="mr-1 inline h-3.5 w-3.5"/> Sign out</button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto border-t border-[#edf0f5] p-3">
+            {[
+              ['overview','Overview',Activity],
+              ['shipments','My Shipments',Package],
+              ['communication','Communication',MessageSquare]
+            ].map(([id,label,Icon]: any) => (
+              <button key={id} onClick={() => setActiveTab(id)} className={'inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black '+(activeTab===id?'bg-[#4D148C] text-white':'text-[#51607d] hover:bg-[#f2f5fa]')}>
+                <Icon className="h-4 w-4"/>{label}
+              </button>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: PICKUP REQUESTS */}
-      {activeTab === 'pickups' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-slate-900">Courier Doorstep Collections</h2>
-            <button
-              onClick={() => setShowPickupModal(true)}
-              className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Book Pickup
+            <button onClick={load} disabled={busy} className="ml-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#dfe6f0] text-[#4D148C] hover:bg-[#f7f4fb]" aria-label="Refresh">
+              <RefreshCw className={busy ? 'h-4 w-4 animate-spin' : 'h-4 w-4'}/>
             </button>
           </div>
+        </header>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-600 divide-y divide-slate-100">
-              <thead className="bg-slate-50 text-[10px] font-mono uppercase text-slate-400 font-semibold">
-                <tr>
-                  <th className="py-3 px-4">Pickup Date</th>
-                  <th className="py-3 px-4">Time Window</th>
-                  <th className="py-3 px-4">Address</th>
-                  <th className="py-3 px-4">Packages / Weight</th>
-                  <th className="py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {pickups.map(p => (
-                  <tr key={p.id}>
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.pickupDate}</td>
-                    <td className="py-3.5 px-4 text-cyan-800">{p.timeSlot}</td>
-                    <td className="py-3.5 px-4 text-slate-700 max-w-xs truncate">{p.locationAddress}</td>
-                    <td className="py-3.5 px-4 font-mono">{p.packageCount} pkgs ({p.totalWeightKg} kg)</td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
-                        {p.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        {error && <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</div>}
 
-      {/* TAB 4: BILLING & INVOICES */}
-      {activeTab === 'billing' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-slate-900">Commercial Invoices & Accounts</h2>
-            <span className="text-xs text-slate-400">Export available from billing API</span>
-          </div>
+        {activeTab === 'overview' && (
+          <div className="mt-6 space-y-6">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[
+                ['Total shipments', shipments.length, Package],
+                ['Active shipments', activeCount, Truck],
+                ['Delivered', deliveredCount, CheckCircle2],
+                ['Paid orders', paidCount, CreditCard],
+              ].map(([label,value,Icon]: any) => (
+                <motion.div key={label} whileHover={{ y: -3 }} className="rounded-2xl border border-[#dfe6f0] bg-white p-5 shadow-sm">
+                  <Icon className="h-5 w-5 text-[#4D148C]"/>
+                  <div className="mt-4 text-2xl font-black">{value}</div>
+                  <div className="mt-1 text-[11px] font-black text-[#7b879f]">{label}</div>
+                </motion.div>
+              ))}
+            </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-600 divide-y divide-slate-100">
-              <thead className="bg-slate-50 text-[10px] font-mono uppercase text-slate-400 font-semibold">
-                <tr>
-                  <th className="py-3 px-4">Invoice #</th>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Amount</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Download</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {invoices.map(inv => (
-                  <tr key={inv.id}>
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
-                    <td className="py-3.5 px-4 text-slate-500">{inv.date}</td>
-                    <td className="py-3.5 px-4 font-mono font-extrabold text-slate-900">${inv.amount}.00</td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <span className="text-xs text-slate-400">PDF service required</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Add Address Modal */}
-      {showAddressModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="font-bold text-lg text-slate-900">Add New Address to Directory</h3>
-            <form onSubmit={handleSaveAddress} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Contact Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newAddr.name}
-                  onChange={e => setNewAddr({ ...newAddr, name: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Company</label>
-                <input
-                  type="text"
-                  value={newAddr.company}
-                  onChange={e => setNewAddr({ ...newAddr, company: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Street Address *</label>
-                <input
-                  type="text"
-                  required
-                  value={newAddr.address}
-                  onChange={e => setNewAddr({ ...newAddr, address: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">City *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newAddr.city}
-                    onChange={e => setNewAddr({ ...newAddr, city: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300"
-                  />
+            <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
+              <section className="overflow-hidden rounded-3xl border border-[#dfe6f0] bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-[#edf0f5] px-5 py-4">
+                  <div><h2 className="text-base font-black">Recent production shipments</h2><p className="mt-1 text-[10px] font-bold text-[#7b879f]">No sample records are inserted into this dashboard.</p></div>
+                  <button onClick={() => setActiveTab('shipments')} className="text-[10px] font-black text-[#4D148C]">View all <ChevronRight className="ml-1 inline h-3 w-3"/></button>
                 </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Postal Code</label>
-                  <input
-                    type="text"
-                    value={newAddr.postalCode}
-                    onChange={e => setNewAddr({ ...newAddr, postalCode: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300"
-                  />
+                <div className="divide-y divide-[#edf0f5]">
+                  {shipments.slice(0,6).map(s => (
+                    <button key={s.id} onClick={() => s.trackingNumber && onNavigate('/track?q=' + encodeURIComponent(s.trackingNumber))} className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-[#fbfcff]">
+                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f0e8ff] text-[#4D148C]"><Package className="h-4 w-4"/></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-xs font-black">{s.trackingNumber || 'Carrier tracking pending'}</span><span className="mt-1 block truncate text-[10px] font-semibold text-[#79869e]">{s.recipient?.city || s.recipient?.country || 'Destination pending'} · {s.service || 'Service pending'}</span></span>
+                      <span className="text-[10px] font-black text-[#4D148C]">{s.status || 'Processing'}</span>
+                    </button>
+                  ))}
+                  {!shipments.length && <div className="p-10 text-center"><Package className="mx-auto h-8 w-8 text-[#c5cfdf]"/><div className="mt-3 text-sm font-black text-[#33446f]">No shipments yet</div><div className="mt-1 text-[11px] font-semibold text-[#7b879f]">Create a production shipment to see it here.</div></div>}
                 </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddressModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold"
-                >
-                  Save Address
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </section>
 
-      {/* Schedule Pickup Modal */}
-      {showPickupModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="font-bold text-lg text-slate-900">Schedule Doorstep Courier Collection</h3>
-            <form onSubmit={handleSchedulePickup} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Pickup Date</label>
-                <input
-                  type="date"
-                  value={newPickup.pickupDate}
-                  onChange={e => setNewPickup({ ...newPickup, pickupDate: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Time Window</label>
-                <select
-                  value={newPickup.timeSlot}
-                  onChange={e => setNewPickup({ ...newPickup, timeSlot: e.target.value as any })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white"
-                >
-                  <option>09:00 - 13:00</option>
-                  <option>13:00 - 17:00</option>
-                  <option>17:00 - 20:00</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Pickup Address</label>
-                <input
-                  type="text"
-                  value={newPickup.locationAddress}
-                  onChange={e => setNewPickup({ ...newPickup, locationAddress: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-300"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Packages Count</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newPickup.packageCount}
-                    onChange={e => setNewPickup({ ...newPickup, packageCount: parseInt(e.target.value) || 1 })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300"
-                  />
+              <section className="rounded-3xl border border-[#dfe6f0] bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2"><Bell className="h-5 w-5 text-[#4D148C]"/><h2 className="text-base font-black">Fast actions</h2></div>
+                <div className="mt-5 grid gap-2.5">
+                  {[
+                    ['Track a shipment','Enter a tracking number and open secure tracking.','/track',Search],
+                    ['Open calculator','Review configured production rates before payment.','/quote',CreditCard],
+                    ['Contact support','Ask about payment, delivery or a shipment.','communication',MessageSquare],
+                    ['Help center','Read support information and policies.','/support',CircleHelp],
+                  ].map(([title,copy,path,Icon]: any) => (
+                    <button key={title} onClick={() => path === 'communication' ? setActiveTab('communication') : onNavigate(path)} className="flex items-center gap-3 rounded-2xl border border-[#e1e7f0] p-3 text-left hover:border-[#cbbbe6] hover:bg-[#faf8ff]">
+                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f0e8ff] text-[#4D148C]"><Icon className="h-4 w-4"/></span>
+                      <span className="flex-1"><span className="block text-xs font-black">{title}</span><span className="mt-1 block text-[10px] font-semibold leading-4 text-[#7c889f]">{copy}</span></span><ArrowRight className="h-4 w-4 text-[#9ba6b9]"/>
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Est. Weight (kg)</label>
-                  <input
-                    type="number"
-                    value={newPickup.totalWeightKg}
-                    onChange={e => setNewPickup({ ...newPickup, totalWeightKg: parseFloat(e.target.value) || 1 })}
-                    className="w-full p-2.5 rounded-xl border border-slate-300"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowPickupModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold"
-                >
-                  Confirm Pickup Dispatch
-                </button>
-              </div>
-            </form>
+              </section>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {activeTab === 'shipments' && (
+          <section className="mt-6 overflow-hidden rounded-3xl border border-[#dfe6f0] bg-white shadow-sm">
+            <div className="border-b border-[#edf0f5] px-5 py-4"><h2 className="font-black">My shipments</h2><p className="mt-1 text-[10px] font-bold text-[#7b879f]">Live server-backed records for your account.</p></div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[820px] text-left text-xs">
+                <thead className="bg-[#fafbfe] text-[9px] font-black uppercase tracking-wider text-[#7b879f]"><tr><th className="px-5 py-3">Tracking</th><th className="px-5 py-3">Destination</th><th className="px-5 py-3">Service</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Payment</th><th className="px-5 py-3">Created</th></tr></thead>
+                <tbody className="divide-y divide-[#edf0f5]">
+                  {shipments.map(s => <tr key={s.id} className="hover:bg-[#fbfcff]"><td className="px-5 py-4 font-black">{s.trackingNumber || 'Pending carrier'}</td><td className="px-5 py-4 font-semibold text-[#5f6d88]">{s.recipient?.city || s.recipient?.country || '—'}</td><td className="px-5 py-4 font-bold">{s.service || '—'}</td><td className="px-5 py-4">{s.status || '—'}</td><td className="px-5 py-4">{s.paymentStatus || 'Pending'}</td><td className="px-5 py-4 text-[#65728b]">{s.createdAt ? new Date(s.createdAt).toLocaleString() : '—'}</td></tr>)}
+                  {!shipments.length && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm font-semibold text-[#7b879f]">No production shipments found.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'communication' && (
+          <div className="mt-6 grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
+            <section className="rounded-3xl border border-[#dfe6f0] bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black">Fast communication</h2></div>
+              <p className="mt-2 text-xs font-semibold leading-5 text-[#74819b]">Open a secure support conversation for payment questions, delivery issues or shipment assistance.</p>
+              <div className="mt-5 space-y-3">
+                <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Subject" className="w-full rounded-xl border border-[#d9e1ed] px-3 py-3 text-sm font-bold outline-none focus:border-[#4D148C]"/>
+                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Message for operations…" className="min-h-32 w-full rounded-xl border border-[#d9e1ed] px-3 py-3 text-sm font-semibold outline-none focus:border-[#4D148C]"/>
+                <button onClick={openSupport} disabled={busy} className="w-full rounded-xl bg-[#4D148C] py-3 text-sm font-black text-white">{busy ? 'Sending…' : 'Open conversation'} <ArrowRight className="ml-1 inline h-4 w-4 text-[#ff9a5b]"/></button>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-[#dfe6f0] bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#4D148C]">Support inbox</div><h2 className="mt-1 font-black">Your conversations</h2></div><MessageSquare className="h-5 w-5 text-[#4D148C]"/></div>
+              <div className="mt-5 space-y-3">
+                {threads.map(t => <div key={t.id} className="rounded-2xl border border-[#e3e8f1] p-4"><div className="flex items-center justify-between gap-3"><span className="text-sm font-black">{t.subject}</span><span className="rounded-full bg-[#f0e8ff] px-2.5 py-1 text-[9px] font-black uppercase text-[#4D148C]">{t.status}</span></div><div className="mt-2 text-[10px] font-bold text-[#7a879f]">Priority {t.priority} · Updated {t.updatedAt ? new Date(t.updatedAt).toLocaleString() : '—'}</div></div>)}
+                {!threads.length && <div className="rounded-2xl border border-dashed border-[#cfd8e6] p-10 text-center text-sm font-semibold text-[#7b879f]">No conversations yet.</div>}
+              </div>
+            </section>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
