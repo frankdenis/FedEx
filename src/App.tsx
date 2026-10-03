@@ -19,6 +19,8 @@ import { AuthPages } from './pages/AuthPages';
 import { FleetEquipmentPage } from './pages/FleetEquipmentPage';
 import { GoogleChatPage } from './pages/GoogleChatPage';
 import { GoogleDrivePage } from './pages/GoogleDrivePage';
+import { GuestShippingPage } from './pages/GuestShippingPage';
+import { CommunicationPage } from './pages/CommunicationPage';
 
 import { MessageSquare } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -69,12 +71,16 @@ export default function App() {
       return <FleetEquipmentPage onNavigate={navigate} />;
     }
 
+    if (currentPath.startsWith('/request-shipping')) {
+      return <GuestShippingPage onNavigate={navigate} />;
+    }
+
     if (currentPath.startsWith('/ship')) {
       return <ShipNowPage onNavigate={navigate} />;
     }
 
     if (currentPath.startsWith('/quote')) {
-      return <QuoteCalculatorPage onNavigate={navigate} />;
+      return <QuoteCalculatorPage onNavigate={navigate} initialRequestId={getQueryParam('request')} />;
     }
 
     if (currentPath.startsWith('/services')) {
@@ -100,6 +106,10 @@ export default function App() {
 
     if (currentPath.startsWith('/admin')) {
       return <AdminDashboardPage onNavigate={navigate} />;
+    }
+
+    if (currentPath.startsWith('/communication')) {
+      return <CommunicationPage onNavigate={navigate} />;
     }
 
     if (currentPath.startsWith('/chat') || currentPath.startsWith('/dispatch-chat')) {
