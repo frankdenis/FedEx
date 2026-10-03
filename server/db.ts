@@ -8,6 +8,8 @@ const tableMap: Record<string,string> = {
   stripeEvents: 'stripe_events',
   auditLogs: 'audit_logs',
   shipments: 'shipments',
+  guestShippingRequests: 'guest_shipping_requests',
+  siteSettings: 'site_settings',
 };
 
 const columnMap: Record<string,string> = {
@@ -44,6 +46,16 @@ const columnMap: Record<string,string> = {
   shipmentNumber: 'shipment_number',
   firstName: 'first_name',
   lastName: 'last_name',
+  requestNumber: 'request_number',
+  verificationStatus: 'verification_status',
+  verificationNotes: 'verification_notes',
+  selectedService: 'selected_service',
+  quotedCost: 'quoted_cost',
+  stripeSessionId: 'stripe_session_id',
+  paymentReference: 'payment_reference',
+  paymentProof: 'payment_proof',
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
 };
 
 function tableName(name:string){ return tableMap[name] || name; }
