@@ -12,8 +12,6 @@ const tableMap: Record<string,string> = {
   supportMessages: 'support_messages',
   guestShippingRequests: 'guest_shipping_requests',
   siteSettings: 'site_settings',
-  guestShippingRequests: 'guest_shipping_requests',
-  siteSettings: 'site_settings',
 };
 
 const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
@@ -66,13 +64,6 @@ const columnMap: Record<string,string> = {
   lastMessageAt: 'last_message_at',
   updatedBy: 'updated_by',
   lastName: 'last_name',
-  requestNumber: 'request_number',
-  verificationStatus: 'verification_status',
-  verificationNotes: 'verification_notes',
-  selectedService: 'selected_service',
-  quotedCost: 'quoted_cost',
-  stripeSessionId: 'stripe_session_id',
-  paymentProof: 'payment_proof',
 };
 
 function tableName(name:string){ return tableMap[name] || name; }
@@ -96,9 +87,9 @@ function encodeObject(input:any){
   return out;
 }
 
-function decodeRow(row:any):any {
+function decodeRow(name:string,row:any):any {
   if(!row) return null;
-  const out:any={id:row.id};
+  const out:any={id:row[keyColumn(name)]};
   for(const [k,v] of Object.entries(row)){
     const camel = Object.entries(columnMap).find(([,db])=>db===k)?.[0] || k;
     out[camel]=v;
