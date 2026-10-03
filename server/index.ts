@@ -9,7 +9,7 @@ import { createFedexShipment, fedexConfigured, fedexRequest } from './fedex.js';
 
 const app = express();
 const port = Number(process.env.API_PORT || 8787);
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-08-26.dahlia' }) : null;
 const appBaseUrl = (process.env.APP_BASE_URL || '').replace(/\/$/, '');
 const rateWindowMs = 60_000;
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -99,56 +99,70 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
   }
 }
 
+async function processSuccessfulCheckout(session: Stripe.Checkout.Session): Promise<void> {
+  const shipmentId = session.metadata?.shipmentId;
+  if (!shipmentId || session.payment_status !== 'paid') return;
+
+  const shipmentRef = db.collection('shipments').doc(shipmentId);
+  const shipmentSnapshot = await shipmentRef.get();
+  if (!shipmentSnapshot.exists) return;
+
+  const shipment = shipmentSnapshot.data()!;
+  if (shipment.paymentStatus !== 'Paid') {
+    await shipmentRef.update({
+      paymentStatus: 'Paid',
+      paymentProvider: 'stripe',
+      paymentReference: session.payment_intent || session.id,
+      paidAt: new Date().toISOString(),
+      status: 'Payment Confirmed',
+    });
+
+    await db.collection('auditLogs').add({
+      action: 'payment.completed',
+      shipmentId,
+      paymentReference: session.payment_intent || session.id,
+      timestamp: FieldValue.serverTimestamp(),
+    });
+  }
+
+  await enqueueCarrierJob(shipmentId);
+}
+
 app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: 'Payment provider is not configured.' });
   const signature = req.header('stripe-signature');
   if (!signature) return res.status(400).json({ error: 'Missing payment signature.' });
+
+  let event: Stripe.Event;
   try {
-    const event = stripe.webhooks.constructEvent(req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
-    const eventRef = db.collection('stripeEvents').doc(event.id);
-    const priorEvent = await eventRef.get();
-    if (priorEvent.exists) {
-      if (event.type === 'checkout.session.completed') {
-        const duplicateSession = event.data.object as Stripe.Checkout.Session;
-        const duplicateShipmentId = duplicateSession.metadata?.shipmentId;
-        if (duplicateShipmentId && duplicateSession.payment_status === 'paid') {
-          await enqueueCarrierJob(duplicateShipmentId);
-        }
-      }
-      return res.json({ received: true, duplicate: true });
-    }
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const shipmentId = session.metadata?.shipmentId;
-      if (shipmentId && session.payment_status === 'paid') {
-        const shipmentRef = db.collection('shipments').doc(shipmentId);
-        const shipmentSnapshot = await shipmentRef.get();
-        if (!shipmentSnapshot.exists) return res.json({ received: true });
-
-        await shipmentRef.update({
-          paymentStatus: 'Paid',
-          paymentProvider: 'stripe',
-          paymentReference: session.payment_intent || session.id,
-          paidAt: new Date().toISOString(),
-          status: 'Payment Confirmed',
-        });
-
-        await enqueueCarrierJob(shipmentId);
-        await db.collection('auditLogs').add({
-          action: 'payment.completed',
-          shipmentId,
-          paymentReference: session.payment_intent || session.id,
-          timestamp: FieldValue.serverTimestamp(),
-        });
-      }
-    }
-
-    // Mark the provider event processed only after all required business work succeeds.
-    // This keeps a later provider retry useful if the first delivery partially fails.
-    await eventRef.set({ receivedAt: FieldValue.serverTimestamp(), type: event.type });
-    return res.json({ received: true });
+    event = stripe.webhooks.constructEvent(req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
   } catch {
     return res.status(400).json({ error: 'Invalid payment webhook signature.' });
+  }
+
+  try {
+    const claim = await db.rpc('claim_stripe_event', {
+      p_event_id: event.id,
+      p_event_type: event.type,
+    }) as any;
+
+    if (claim?.result === 'processed' || claim?.result === 'processing') {
+      return res.json({ received: true, duplicate: true });
+    }
+
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+      await processSuccessfulCheckout(event.data.object as Stripe.Checkout.Session);
+    }
+
+    await db.rpc('complete_stripe_event', { p_event_id: event.id });
+    return res.json({ received: true });
+  } catch (error) {
+    try {
+      await db.rpc('fail_stripe_event', { p_event_id: event.id });
+    } catch {
+      // Preserve the original failure so Stripe retries the event.
+    }
+    return res.status(500).json({ error: error instanceof Error ? error.message : 'Payment webhook processing failed.' });
   }
 });
 
@@ -354,12 +368,14 @@ app.post('/api/payments/checkout', requireAuth, async (req, res) => {
   const currency = String(shipment.currency || 'USD').toLowerCase();
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'Shipment has no payable production amount.' });
   if (!/^[a-z]{3}$/.test(currency)) return res.status(400).json({ error: 'Shipment has an invalid payment currency.' });
+  const integrationIdentifier = 'fedex-' + randomUUID().replace(/-/g, '').slice(0, 8);
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     success_url: appBaseUrl + '/dashboard?payment=success',
     cancel_url: appBaseUrl + '/dashboard?payment=cancelled',
     client_reference_id: shipmentId,
     metadata: { shipmentId, ownerUid: shipment.ownerUid },
+    integration_identifier: integrationIdentifier,
     line_items: [{ quantity: 1, price_data: { currency: String(shipment.currency || 'usd').toLowerCase(), unit_amount: Math.round(amount * 100), product_data: { name: 'International shipment ' + (shipment.trackingNumber || shipment.internalReference) } } }],
   }, { idempotencyKey });
   await shipmentRef.update({ paymentSessionId: session.id, paymentProvider: 'stripe' });
