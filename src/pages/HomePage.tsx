@@ -271,7 +271,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               <div className="relative min-h-[430px] sm:min-h-[500px]">
                 <div className="absolute inset-4 rounded-[30px] bg-gradient-to-br from-[#edf5ff] via-white to-[#f7efff]" />
                 <div className="absolute inset-4 overflow-hidden rounded-[30px] border border-white shadow-[0_28px_70px_rgba(45,49,94,0.14)]">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_45%,rgba(77,20,140,0.12),transparent_34%),linear-gradient(135deg,#ffffff,#f8f4ff)]" />
+                  <img src="https://images.unsplash.com/photo-1764795850513-fa8a469a4600?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=90&w=1800" alt="Logistics professional reviewing inventory on a tablet" className="absolute inset-0 h-full w-full object-cover object-center" /><div className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/20 to-transparent" /><div className="absolute inset-0 bg-gradient-to-t from-[#08143d]/35 via-transparent to-white/10" />
                   <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/90 to-transparent" />
 
                   <div className="absolute left-5 top-5 rounded-xl border border-white bg-white/90 px-3 py-2 shadow-lg backdrop-blur">
