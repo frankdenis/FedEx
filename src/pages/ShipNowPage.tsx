@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Package,
   User,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getCurrentUser } from '../lib/store';
 import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { Shipment, ServiceTier } from '../types';
 
 interface ShipNowPageProps {
@@ -73,12 +74,30 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
   const [createdShipment, setCreatedShipment] = useState<Shipment | null>(null);
 
   const [liveQuote, setLiveQuote] = useState<{ price: number; estDaysMin: number; estDaysMax: number } | null>(null);
+  const [guestReady, setGuestReady] = useState(false);
+  const [guestError, setGuestError] = useState('');
+  useEffect(() => {
+    let mounted = true;
+    const prepareGuestSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) { if (mounted) setGuestReady(true); return; }
+      const { error } = await supabase.auth.signInAnonymously();
+      if (mounted) {
+        if (error) setGuestError('Guest shipping is not enabled on the production authentication service yet.');
+        else setGuestReady(true);
+      }
+    };
+    prepareGuestSession();
+    return () => { mounted = false; };
+  }, []);
+
   const subtotal = liveQuote?.price ?? 0;
   const insuranceFee = 0;
   const totalAmount = liveQuote?.price ?? 0;
 
   const handleCreateShipment = async () => {
     try {
+      if (!guestReady) throw new Error(guestError || 'Preparing secure guest checkout. Please try again in a moment.');
       const quote = await api.quote({
         service: selectedService,
         weightKg: packageInfo.weight,
@@ -115,6 +134,8 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Title Header */}
+      <div className="mx-auto mb-5 max-w-5xl rounded-2xl border border-purple-100 bg-gradient-to-r from-purple-50 via-white to-orange-50 px-4 py-3 text-center text-[11px] font-bold text-[#4D148C]">No account required for a shipping request. Your temporary secure guest session protects the quote and checkout flow.</div>
+      {guestError && <div className="mx-auto mb-5 max-w-5xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs font-semibold text-amber-800">{guestError}</div>}
       <div className="text-center max-w-2xl mx-auto mb-10">
         <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-600">
           Seamless Consignment Dispatch
