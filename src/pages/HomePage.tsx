@@ -64,11 +64,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   };
 
   const serviceSlides = [
-    { title: 'Express shipping', eyebrow: 'Time-critical delivery', copy: 'Move urgent documents and parcels through a priority shipping network.', image: LOGISTICS_IMAGES.heroAircraft, path: '/services/express', accent: 'from-[#4D148C]/95 via-[#4D148C]/60 to-transparent' },
-    { title: 'Global shipping', eyebrow: 'International logistics', copy: 'Coordinate cross-border shipments with tracking and customs support.', image: LOGISTICS_IMAGES.containerShip, path: '/services/international', accent: 'from-[#0b1220]/95 via-[#0b1220]/60 to-transparent' },
-    { title: 'Ground delivery', eyebrow: 'Reliable final mile', copy: 'Connect local distribution, pickup and delivery into one experience.', image: LOGISTICS_IMAGES.deliveryVan, path: '/services/domestic', accent: 'from-[#17301f]/95 via-[#17301f]/55 to-transparent' },
-    { title: 'Freight & cargo', eyebrow: 'Large-scale movement', copy: 'Plan palletized and commercial cargo movements across major corridors.', image: LOGISTICS_IMAGES.cargoFreighter, path: '/services/freight', accent: 'from-[#25112b]/95 via-[#25112b]/55 to-transparent' },
-    { title: 'Smart warehousing', eyebrow: 'Supply chain support', copy: 'Stage inventory closer to demand with connected storage and fulfillment.', image: LOGISTICS_IMAGES.distributionHub, path: '/services/warehousing', accent: 'from-[#102b36]/95 via-[#102b36]/55 to-transparent' },
+    { title: 'Your World. Our Priority.', eyebrow: 'Global reach · Local care', copy: 'Fast, reliable and secure shipping solutions for individuals and businesses, anywhere in the world.', image: LOGISTICS_IMAGES.heroAircraft, path: '/services/express', accent: 'from-[#07152f]/95 via-[#07152f]/55 to-transparent' },
+    { title: 'Smarter Logistics. Smoother Delivery.', eyebrow: 'Connected logistics', copy: 'Track shipments, coordinate international movement and keep every delivery visible from pickup to destination.', image: LOGISTICS_IMAGES.airportTarmac, path: '/services/international', accent: 'from-[#10152b]/95 via-[#4D148C]/45 to-transparent' },
   ];
   const [activeSlide, setActiveSlide] = useState(0);
   useEffect(() => {
@@ -78,52 +75,38 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
   return (
     <div className="space-y-16 sm:space-y-24">
-    <div className="relative z-20 bg-[#07030d] overflow-hidden">
-      <div className="relative h-[360px] sm:h-[430px] lg:h-[500px]">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeSlide}
-            className="absolute inset-0"
-            initial={{ opacity: 0, scale: 1.04 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.99 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <img src={serviceSlides[activeSlide].image} alt={serviceSlides[activeSlide].title} className="w-full h-full object-cover" />
+    <section className="relative z-20 overflow-hidden rounded-b-[2rem] bg-slate-950">
+      <div className="relative h-[520px] sm:h-[600px] lg:h-[680px]">
+        <AnimatePresence initial={false} mode="sync">
+          <motion.div key={activeSlide} className="absolute inset-0" initial={{ opacity: 0, scale: 1.035 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.995 }} transition={{ opacity: { duration: 0.75, ease: 'easeInOut' }, scale: { duration: 1.2, ease: [0.22, 1, 0.36, 1] } }}>
+            <img src={serviceSlides[activeSlide].image} alt={serviceSlides[activeSlide].title} className="h-full w-full object-cover object-center" loading={activeSlide === 0 ? 'eager' : 'lazy'} decoding="async" />
             <div className={`absolute inset-0 bg-gradient-to-r ${serviceSlides[activeSlide].accent}`} />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/15 to-transparent" />
           </motion.div>
         </AnimatePresence>
-
-        <div className="relative z-10 max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-end pb-12 sm:pb-16">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeSlide + '-copy'}
-              initial={{ opacity: 0, x: -28 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.45 }}
-              className="max-w-2xl text-white"
-            >
-              <span className="inline-flex px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-[#FF6600] text-[11px] font-bold uppercase tracking-[0.18em]">
-                {serviceSlides[activeSlide].eyebrow}
-              </span>
-              <h2 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">{serviceSlides[activeSlide].title}</h2>
-              <p className="mt-3 text-sm sm:text-base text-white/80 max-w-xl">{serviceSlides[activeSlide].copy}</p>
-              <button onClick={() => onNavigate(serviceSlides[activeSlide].path)} className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#FF6600] hover:bg-[#e85b00] text-white text-sm font-bold shadow-xl transition-transform hover:-translate-y-0.5">
-                Explore service <ArrowRight className="w-4 h-4" />
-              </button>
-            </motion.div>
-          </AnimatePresence>
+        <div className="absolute inset-0 z-10 flex items-center">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+            <AnimatePresence mode="wait">
+              <motion.div key={`hero-copy-${activeSlide}`} initial={{ opacity: 0, y: 18, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -12, filter: 'blur(4px)' }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }} className="max-w-2xl text-white">
+                <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-300 backdrop-blur-xl">{serviceSlides[activeSlide].eyebrow}</span>
+                <h2 className="mt-5 max-w-2xl text-4xl font-black tracking-[-0.04em] leading-[0.98] sm:text-6xl lg:text-7xl">{serviceSlides[activeSlide].title}</h2>
+                <p className="mt-5 max-w-xl text-sm leading-6 text-white/80 sm:text-base sm:leading-7">{serviceSlides[activeSlide].copy}</p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <button onClick={() => onNavigate(serviceSlides[activeSlide].path)} className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3.5 text-sm font-extrabold text-[#4D148C] shadow-2xl transition-transform hover:-translate-y-0.5">Explore service <ArrowRight className="h-4 w-4 text-[#FF6600]" /></button>
+                  <button onClick={() => onNavigate('/track')} className="inline-flex items-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-5 py-3.5 text-sm font-bold text-white backdrop-blur-xl transition hover:bg-white/15">Track shipment <Search className="h-4 w-4" /></button>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
-
-        <div className="absolute z-20 bottom-5 right-4 sm:right-8 flex items-center gap-2">
-          {serviceSlides.map((slide, index) => (
-            <button key={slide.title} aria-label={`Show ${slide.title}`} onClick={() => setActiveSlide(index)} className={`h-1.5 rounded-full transition-all ${index === activeSlide ? 'w-10 bg-[#FF6600]' : 'w-5 bg-white/40 hover:bg-white/70'}`} />
-          ))}
+        <button aria-label="Previous hero slide" onClick={() => setActiveSlide((current) => (current - 1 + serviceSlides.length) % serviceSlides.length)} className="absolute left-4 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/20 text-white backdrop-blur-xl transition hover:bg-black/35"><ChevronRight className="h-5 w-5 rotate-180" /></button>
+        <button aria-label="Next hero slide" onClick={() => setActiveSlide((current) => (current + 1) % serviceSlides.length)} className="absolute right-4 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/20 text-white backdrop-blur-xl transition hover:bg-black/35"><ChevronRight className="h-5 w-5" /></button>
+        <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-2 backdrop-blur-xl">
+          {serviceSlides.map((slide, index) => <button key={slide.title} aria-label={`Show slide ${index + 1}`} onClick={() => setActiveSlide(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === activeSlide ? 'w-10 bg-white' : 'w-5 bg-white/35 hover:bg-white/70'}`} />)}
         </div>
+        <div className="pointer-events-none absolute bottom-5 right-5 z-20 hidden rounded-2xl border border-white/15 bg-black/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-xl">{String(activeSlide + 1).padStart(2, '0')} / {String(serviceSlides.length).padStart(2, '0')}</div>
       </div>
-    </div>
+    </section>
 
 
       {/* PREMIUM LIVE LOGISTICS COMMAND CENTER */}
