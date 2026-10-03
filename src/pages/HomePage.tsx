@@ -23,10 +23,10 @@ const nav = [
 ] as const;
 
 const slides = [
-  { id: 'overview', eyebrow: 'Operations overview', title: 'Your World', accent: 'Our Priority', copy: 'Fast, reliable and secure shipping workflows for individuals and businesses, anywhere in the world.' },
-  { id: 'tracking', eyebrow: 'Live tracking', title: 'Know Where', accent: 'It Is', copy: 'Follow production shipments through pickup, transit and delivery with a clean, focused tracking workspace.' },
+  { id: 'overview', eyebrow: 'Welcome back', title: 'Your World', accent: 'Our Priority', copy: 'Fast, reliable and secure shipping solutions for individuals and businesses, anywhere in the world.' },
+  { id: 'tracking', eyebrow: 'Live tracking', title: 'Track Every', accent: 'Shipment', copy: 'Follow production shipments through pickup, transit and delivery with a clear, responsive tracking workspace.' },
   { id: 'shipping', eyebrow: 'Shipment creation', title: 'Ship With', accent: 'Confidence', copy: 'Request a shipment without an account, calculate a production rate and pay securely before operational review.' },
-  { id: 'global', eyebrow: 'Global services', title: 'Move Across', accent: 'Borders', copy: 'Connect international services, route support and customer communication from one responsive command center.' },
+  { id: 'global', eyebrow: 'Worldwide delivery', title: 'Move Across', accent: 'Borders', copy: 'Connect international services, route support and customer communication from one premium command center.' },
 ];
 
 const services = [
@@ -233,9 +233,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.img
                           key={active.id}
-                          src={site.heroImage || LOGISTICS_IMAGES.cargoFreighter}
+                          src={site.heroImage || LOGISTICS_IMAGES.heroOperator || LOGISTICS_IMAGES.cargoFreighter}
                           alt="Premium logistics operations and parcel distribution"
-                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.12] contrast-[1.1]"
+                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.16] saturate-[1.12] contrast-[1.12]"
                           initial={{ opacity: 0, scale: 1.025 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0 }}
@@ -246,10 +246,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       <div className="absolute inset-0 bg-gradient-to-t from-[#101d48]/45 via-transparent to-white/5" />
 
                       <div className="absolute right-5 top-5 w-[205px] rounded-2xl border border-white/85 bg-white/95 p-4 shadow-2xl backdrop-blur-xl">
-                        <div className="flex items-center gap-2"><Globe2 className="h-4 w-4 text-[#4D148C]" /><span className="text-[10px] font-black text-[#183066]">Route visibility</span></div>
-                        <div className="mt-3 flex items-center justify-between text-[10px] font-black text-[#53617d]"><span>Origin</span><ArrowRight className="h-3 w-3 text-[#4D148C]" /><span>Destination</span></div>
+                        <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#18b87b]" /><span className="text-[10px] font-black text-[#183066]">Live Shipment</span><span className="ml-auto rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-black text-emerald-700">{activeShipment ? 'On time' : 'Waiting'}</span></div>
+                        <div className="mt-3 text-sm font-black text-[#14265e]">{activeShipment?.trackingNumber || 'Awaiting production shipment'}</div>
+                        <div className="mt-1 text-[10px] font-bold text-[#53617d]">{activeShipment?.sender?.city || 'Origin'} <ArrowRight className="mx-1 inline h-3 w-3 text-[#4D148C]" /> {activeShipment?.recipient?.city || 'Destination'}</div>
                         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e8edf5]"><div className="h-full w-2/3 rounded-full bg-gradient-to-r from-[#4D148C] to-[#ff6600]" /></div>
-                        <div className="mt-2 text-[9px] font-bold text-[#78859f]">Live data appears when shipments are available.</div>
+                        <div className="mt-2 text-[9px] font-bold text-[#78859f]">Live shipment data is shown only when available.</div>
                       </div>
 
                       <div className="absolute left-5 bottom-20 max-w-[260px] rounded-2xl border border-white/85 bg-white/96 p-4 shadow-2xl backdrop-blur-xl">
@@ -263,7 +264,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/85 bg-white/96 p-4 shadow-2xl backdrop-blur-xl">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <div className="text-[9px] font-black uppercase tracking-[.16em] text-[#7a879f]">Current production shipment</div>
+                            <div className="text-[9px] font-black uppercase tracking-[.16em] text-[#7a879f]">Live shipment workspace</div>
                             <div className="mt-1 text-sm font-black text-[#14265e]">{activeShipment?.trackingNumber || 'No live shipment selected'}</div>
                           </div>
                           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#f0e8ff] text-[#4D148C]">{activeShipment ? <CheckCircle2 className="h-5 w-5" /> : <Activity className="h-5 w-5" />}</div>
@@ -340,7 +341,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <footer className="border-t border-[#dfe5ef] bg-white px-5 py-5 sm:px-8 lg:px-9">
               <div className="mx-auto flex max-w-[1510px] flex-col gap-2 text-[10px] font-bold text-[#7c879d] sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#4D148C]" /> Secure production workspace</div>
-                <div>Ship globally. Track clearly. Deliver with confidence.</div>
+                <div>Ship smarter. Track clearly. Deliver with confidence.</div>
               </div>
             </footer>
           </main>

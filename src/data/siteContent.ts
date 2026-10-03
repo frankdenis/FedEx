@@ -3,6 +3,7 @@ import type { ServiceDetailInfo } from '../types';
 export const LOGISTICS_IMAGES = {
   heroAircraft: 'https://images.unsplash.com/photo-1570710891163-6d3b5c47248b?auto=format&fit=crop&w=2000&q=80', // Cargo Boeing 747 on tarmac
   cargoFreighter: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1600&q=80', // Modern warehouse logistics rack
+  heroOperator: 'https://images.unsplash.com/photo-1573496799515-eebbb63814f2?auto=format&fit=crop&w=2200&q=92', // Clear premium professional operator portrait
   deliveryVan: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=1600&q=80', // Fleet delivery vehicle
   containerShip: 'https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&w=1600&q=80', // Port shipping container crane
   airportTarmac: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80', // Corporate logistics briefing
