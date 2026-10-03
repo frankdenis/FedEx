@@ -403,5 +403,109 @@ app.post('/api/shipments/:trackingNumber/events', requireAuth, requireAdmin, asy
   return res.json({ ok: true, event });
 });
 
-app.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));
+
+app.get('/api/admin/users', requireAuth, requireAdmin, async (_req, res) => {
+  const rows = await db.collection('users').orderBy('createdAt', 'desc').limit(200).get();
+  return res.json(rows.docs.map((doc: any) => doc.data()));
+});
+
+app.patch('/api/admin/users/:userId/status', requireAuth, requireAdmin, async (req, res) => {
+  const userId = req.params.userId.trim();
+  const status = req.body?.status;
+  if (!userId || !['active', 'suspended'].includes(status)) return res.status(400).json({ error: 'Invalid user status.' });
+  if (userId === req.user!.uid) return res.status(400).json({ error: 'You cannot suspend your own account.' });
+  await db.collection('users').doc(userId).update({ status });
+  return res.json({ ok: true });
+});
+
+app.get('/api/admin/rates', requireAuth, requireAdmin, async (_req, res) => {
+  const rows = await db.collection('shippingRates').orderBy('createdAt', 'desc').limit(500).get();
+  return res.json(rows.docs.map((doc: any) => doc.data()));
+});
+
+app.post('/api/admin/rates', requireAuth, requireAdmin, async (req, res) => {
+  const b = req.body || {};
+  const baseRate = Number(b.baseRate), perKgRate = Number(b.perKgRate), estDaysMin = Number(b.estDaysMin), estDaysMax = Number(b.estDaysMax);
+  if (!b.service || !b.originCountry || !b.destCountry || ![baseRate, perKgRate, estDaysMin, estDaysMax].every(Number.isFinite) || baseRate < 0 || perKgRate < 0 || estDaysMin < 0 || estDaysMax < estDaysMin) {
+    return res.status(400).json({ error: 'Invalid production rate.' });
+  }
+  const id = randomUUID();
+  await db.collection('shippingRates').doc(id).set({
+    id, service: String(b.service), originCountry: String(b.originCountry), destCountry: String(b.destCountry),
+    baseRate, perKgRate, estDaysMin, estDaysMax, currency: String(b.currency || 'USD').toUpperCase(),
+    active: b.active !== false, createdAt: new Date().toISOString()
+  });
+  return res.status(201).json({ id });
+});
+
+app.patch('/api/admin/rates/:rateId', requireAuth, requireAdmin, async (req, res) => {
+  const id = req.params.rateId.trim();
+  const allowed = ['service','originCountry','destCountry','baseRate','perKgRate','estDaysMin','estDaysMax','currency','active'];
+  const patch: any = {};
+  for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+  for (const key of ['baseRate','perKgRate','estDaysMin','estDaysMax']) if (patch[key] !== undefined) patch[key] = Number(patch[key]);
+  if (patch.currency) patch.currency = String(patch.currency).toUpperCase();
+  await db.collection('shippingRates').doc(id).update(patch);
+  return res.json({ ok: true });
+});
+
+app.delete('/api/admin/rates/:rateId', requireAuth, requireAdmin, async (req, res) => {
+  await db.collection('shippingRates').doc(req.params.rateId.trim()).update({ active: false });
+  return res.json({ ok: true });
+});
+
+app.get('/api/admin/audit-logs', requireAuth, requireAdmin, async (_req, res) => {
+  const rows = await db.collection('auditLogs').orderBy('timestamp', 'desc').limit(200).get();
+  return res.json(rows.docs.map((doc: any) => doc.data()));
+});
+
+app.get('/api/support/threads', requireAuth, async (req, res) => {
+  const query = req.user!.admin
+    ? db.collection('supportThreads').orderBy('updatedAt', 'desc').limit(100)
+    : db.collection('supportThreads').where('userId', '==', req.user!.uid).orderBy('updatedAt', 'desc').limit(50);
+  const rows = await query.get();
+  return res.json(rows.docs.map((doc: any) => doc.data()));
+});
+
+app.post('/api/support/threads', requireAuth, async (req, res) => {
+  const subject = String(req.body?.subject || '').trim();
+  const body = String(req.body?.body || '').trim();
+  if (subject.length < 3 || !body) return res.status(400).json({ error: 'Subject and message are required.' });
+  const id = randomUUID(), messageId = randomUUID(), now = new Date().toISOString();
+  await db.collection('supportThreads').doc(id).set({
+    id, userId: req.user!.uid, subject, status: 'open',
+    priority: ['low','normal','high','urgent'].includes(req.body?.priority) ? req.body.priority : 'normal',
+    shipmentId: req.body?.shipmentId || null, createdAt: now, updatedAt: now, lastMessageAt: now
+  });
+  await db.collection('supportMessages').doc(messageId).set({
+    id: messageId, threadId: id, senderUid: req.user!.uid, senderRole: req.user!.admin ? 'admin' : 'customer',
+    body, paymentReference: req.body?.paymentReference || null, attachmentUrl: req.body?.attachmentUrl || null, createdAt: now
+  });
+  return res.status(201).json({ id });
+});
+
+app.get('/api/support/threads/:threadId/messages', requireAuth, async (req, res) => {
+  const id = req.params.threadId.trim();
+  const thread = await db.collection('supportThreads').doc(id).get();
+  if (!thread.exists) return res.status(404).json({ error: 'Conversation not found.' });
+  if (!req.user!.admin && thread.data()?.userId !== req.user!.uid) return res.status(403).json({ error: 'Forbidden.' });
+  const rows = await db.collection('supportMessages').where('threadId', '==', id).orderBy('createdAt', 'asc').limit(200).get();
+  return res.json(rows.docs.map((doc: any) => doc.data()));
+});
+
+app.post('/api/support/threads/:threadId/messages', requireAuth, async (req, res) => {
+  const id = req.params.threadId.trim(), body = String(req.body?.body || '').trim();
+  if (!body) return res.status(400).json({ error: 'Message cannot be empty.' });
+  const thread = await db.collection('supportThreads').doc(id).get();
+  if (!thread.exists) return res.status(404).json({ error: 'Conversation not found.' });
+  if (!req.user!.admin && thread.data()?.userId !== req.user!.uid) return res.status(403).json({ error: 'Forbidden.' });
+  const now = new Date().toISOString(), messageId = randomUUID();
+  await db.collection('supportMessages').doc(messageId).set({
+    id: messageId, threadId: id, senderUid: req.user!.uid, senderRole: req.user!.admin ? 'admin' : 'customer',
+    body, paymentReference: req.body?.paymentReference || null, attachmentUrl: req.body?.attachmentUrl || null, createdAt: now
+  });
+  await db.collection('supportThreads').doc(id).update({ updatedAt: now, lastMessageAt: now, status: req.user!.admin ? 'in_progress' : 'open' });
+  return res.status(201).json({ id: messageId });
+});
+\napp.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));
 app.listen(port, () => console.log('FedEx logistics API listening on port ' + port));
