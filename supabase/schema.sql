@@ -117,7 +117,7 @@ create table if not exists public.guest_shipping_requests (id uuid primary key d
 create index if not exists guest_requests_email_idx on public.guest_shipping_requests(lower(email));
 create index if not exists guest_requests_status_idx on public.guest_shipping_requests(status,created_at desc);
 create table if not exists public.site_settings (id text primary key,value jsonb not null default '{}'::jsonb,updated_at timestamptz not null default now(),updated_by uuid references auth.users(id) on delete set null);
-insert into public.site_settings(id,value) values ('homepage',jsonb_build_object('headline','Your World','accent','Our Priority','copy','A bright, premium logistics workspace for shipping, tracking and managing deliveries across your global network.','heroImage','https://images.pexels.com/photos/6169659/pexels-photo-6169659.jpeg?cs=srgb&dl=pexels-tima-miroshnichenko-6169659.jpg&fm=jpg')) on conflict (id) do nothing;
+insert into public.site_settings(id,value) values ('homepage',jsonb_build_object('headline','Your World','accent','Our Priority','copy','A bright, premium logistics workspace for shipping, tracking and managing deliveries across your global network.','heroImage','https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=2000&q=88')) on conflict (id) do nothing;
 alter table public.guest_shipping_requests enable row level security;
 alter table public.site_settings enable row level security;
 
@@ -323,3 +323,34 @@ revoke all on function public.fail_stripe_event(text) from public, anon, authent
 grant execute on function public.claim_stripe_event(text,text) to service_role;
 grant execute on function public.complete_stripe_event(text) to service_role;
 grant execute on function public.fail_stripe_event(text) to service_role;
+
+
+-- Customer communication workspace
+create table if not exists public.support_threads (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  subject text not null,
+  status text not null default 'open' check (status in ('open','in_progress','resolved','closed')),
+  priority text not null default 'normal' check (priority in ('low','normal','high','urgent')),
+  shipment_id uuid references public.shipments(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  last_message_at timestamptz not null default now()
+);
+
+create table if not exists public.support_messages (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.support_threads(id) on delete cascade,
+  sender_uid uuid not null references auth.users(id) on delete cascade,
+  sender_role text not null check (sender_role in ('customer','admin')),
+  body text not null,
+  payment_reference text,
+  attachment_url text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists support_threads_user_updated_idx on public.support_threads(user_id, updated_at desc);
+create index if not exists support_messages_thread_created_idx on public.support_messages(thread_id, created_at asc);
+
+alter table public.support_threads enable row level security;
+alter table public.support_messages enable row level security;

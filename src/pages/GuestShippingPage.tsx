@@ -7,6 +7,7 @@ interface Props { onNavigate: (path: string) => void; }
 export const GuestShippingPage: React.FC<Props> = ({ onNavigate }) => {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState('');
   const [request, setRequest] = useState<any>(null);
   const [f, setF] = useState({
@@ -60,7 +61,7 @@ export const GuestShippingPage: React.FC<Props> = ({ onNavigate }) => {
           {step===2&&request&&<div className="mt-7 space-y-6">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><div className="flex items-center gap-2 font-black text-emerald-800"><CheckCircle2 className="h-5 w-5"/> Request received: {request.requestNumber}</div><p className="mt-2 text-sm font-semibold text-emerald-900/80">Required fields passed validation. Manual operational review remains separate from payment and will not be falsely represented as an automated identity check.</p></div>
             <div className="grid gap-3 md:grid-cols-2">{[['Customer',f.firstName+' '+f.lastName],['Contact',f.email+' · '+f.phone],['Route',f.senderCity+', '+f.senderCountry+' → '+f.recipientCity+', '+f.recipientCountry],['Package',f.weight+' kg · '+f.description]].map(([label,value])=><div key={label} className="rounded-xl border border-[#e1e7f0] p-4"><div className="text-[10px] font-black uppercase text-[#7b879f]">{label}</div><div className="mt-1 text-sm font-black text-[#1c2f64]">{value}</div></div>)}</div>
-            <div className="flex flex-col gap-3 sm:flex-row"><button onClick={()=>setStep(1)} className="rounded-xl border border-[#d9e1ed] px-5 py-3 text-sm font-black">Edit details</button><button onClick={()=>onNavigate('/quote?request='+encodeURIComponent(request.id))} className="rounded-xl bg-[#4D148C] px-5 py-3 text-sm font-black text-white">Open live shipping calculator <ArrowRight className="ml-1 inline h-4 w-4"/></button></div>
+            <label className="flex items-start gap-3 rounded-2xl border border-[#d9e1ed] bg-[#fbfcff] p-4 text-xs font-bold text-[#42516f]"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#4D148C]"/><span>I confirm that the customer, sender, recipient and package details shown above are correct. This confirmation does not replace operational verification.</span></label><div className="flex flex-col gap-3 sm:flex-row"><button onClick={()=>setStep(1)} className="rounded-xl border border-[#d9e1ed] px-5 py-3 text-sm font-black">Edit details</button><button disabled={!confirmed} onClick={()=>onNavigate('/quote?request='+encodeURIComponent(request.id))} className="rounded-xl bg-[#4D148C] px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">Open live shipping calculator <ArrowRight className="ml-1 inline h-4 w-4"/></button></div>
           </div>}
         </div>
         <div className="mt-4 flex justify-center gap-2 text-[10px] font-bold text-[#7a879e]"><ShieldCheck className="h-4 w-4 text-[#4D148C]"/> Payment is collected before operational review.</div>

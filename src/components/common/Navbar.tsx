@@ -23,6 +23,7 @@ import {
   markAllNotificationsAsRead,
 } from '../../lib/store';
 import { User as UserType } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface NavbarProps {
   currentPath: string;
@@ -77,7 +78,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     { name: 'Support', path: '/support' },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
     setUserDropdownOpen(false);
     onNavigate('/login');
@@ -87,29 +89,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header
       className={`sticky top-0 z-40 transition-all duration-300 ${
         isScrolled
-          ? 'bg-slate-950/90 text-white backdrop-blur-md shadow-lg shadow-black/10 border-b border-slate-800'
-          : 'bg-slate-950 text-white border-b border-slate-800/80'
+          ? 'bg-white/95 text-[#14265e] backdrop-blur-md shadow-lg shadow-black/10 border-b border-[#dce4ef]'
+          : 'bg-white text-[#14265e] border-b border-[#dce4ef] shadow-[0_8px_28px_rgba(31,53,105,.06)]'
       }`}
     >
-      {/* Compact global status bar */}
-      <div className="bg-slate-900 border-b border-slate-800/80 px-4 py-1 text-[11px] font-mono text-slate-400 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#FF6600]/15 text-[#FF6600] font-semibold border border-[#FF6600]/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6600] animate-pulse" />
-            GLOBAL FLEET ACTIVE
-          </span>
-          <span className="hidden sm:inline text-slate-300 font-medium">
-            FedEx Global Air & Intermodal Operations Network
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="hidden md:inline text-slate-400">Global shipping & logistics</span>
-          <button onClick={() => onNavigate('/track')} className="hover:text-white font-medium transition-colors">Track a shipment</button>
-          <button onClick={() => onNavigate('/quote')} className="hover:text-white font-medium transition-colors">Get a quote</button>
-        </div>
-      </div>
-
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
@@ -118,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => onNavigate('/')}
             className="cursor-pointer transition-transform hover:scale-[1.015]"
           >
-            <Logo light size="md" />
+            <Logo size="md" />
           </div>
 
           {/* Desktop Navigation Links */}
@@ -136,8 +119,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   whileTap={{ scale: 0.97 }}
                   className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'text-cyan-400 bg-white/5 shadow-xs font-semibold'
-                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                      ? 'text-[#4D148C] bg-[#f3effb] shadow-xs font-semibold'
+                      : 'text-[#42516f] hover:text-[#14265e] hover:bg-[#f4f6fa]'
                   }`}
                 >
                   {link.name}
@@ -153,11 +136,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onOpenSearch}
               title="Search tracking, services, locations (Cmd+K)"
-              className="p-2 sm:px-3 sm:py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 border border-slate-800"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl text-[#42516f] hover:text-[#14265e] hover:bg-[#f4f6fa] transition-colors flex items-center gap-2 border border-[#dce4ef]"
             >
               <Search className="w-4 h-4 text-cyan-400" />
               <span className="hidden xl:inline text-xs text-slate-400">Search...</span>
-              <kbd className="hidden xl:inline-block px-1.5 py-0.5 text-[9px] font-mono text-slate-400 bg-slate-800 rounded">
+              <kbd className="hidden xl:inline-block px-1.5 py-0.5 text-[9px] font-mono text-slate-400 bg-[#f1f4f8] rounded">
                 ⌘K
               </kbd>
             </button>
@@ -209,14 +192,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Bell className="w-5 h-5" />
                 {unreadNotificationsCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-slate-950 animate-pulse" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-white animate-pulse" />
                 )}
               </button>
 
               {/* Notification Popover Dropdown */}
               {notifDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between">
+                  <div className="p-3.5 bg-[#14265e] text-white flex items-center justify-between">
                     <span className="font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
                       <Bell className="w-3.5 h-3.5 text-cyan-400" />
                       Live Shipment Alerts
@@ -400,7 +383,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.22 }}
-          className="lg:hidden bg-slate-950 border-t border-slate-800 px-4 pt-3 pb-6 space-y-3 animate-in slide-in-from-top-4 duration-200">
+          className="lg:hidden bg-white border-t border-[#dce4ef] px-4 pt-3 pb-6 space-y-3 animate-in slide-in-from-top-4 duration-200">
           <div className="grid grid-cols-2 gap-2">
             {navLinks.map(link => (
               <button
@@ -412,7 +395,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className={`text-left p-3 rounded-xl text-sm font-medium transition-all ${
                   currentPath === link.path
                     ? 'bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/20'
-                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    : 'text-[#42516f] hover:bg-[#f4f6fa] hover:text-[#14265e]'
                 }`}
               >
                 {link.name}

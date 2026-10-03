@@ -14,7 +14,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [guestRequests, setGuestRequests] = useState<any[]>([]);
   const [siteSettingsText, setSiteSettingsText] = useState('{}');
   const [siteSettings, setSiteSettings] = useState<any>({});
-  const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'requests'|'messages'|'site'|'audit'>('overview');
+  const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'requests'|'messages'|'site'|'settings'|'audit'>('overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,7 +26,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       if (!profile.admin) return;
       const [s,u,r,l,t,g,ss] = await Promise.all([api.shipments(), api.adminUsers(), api.adminRates(), api.adminAuditLogs(), api.supportThreads(), api.adminGuestRequests(), api.adminSiteSettings()]);
       setShipments(Array.isArray(s) ? s : (s as any)?.shipments || []);
-      setUsers(u || []); setRates(r || []); setLogs(l || []); setThreads(t || []); setGuestRequests(g || []); setSiteSettings(ss || {});
+      setUsers(u || []); setRates(r || []); setLogs(l || []); setThreads(t || []); setGuestRequests(g || []); setSiteSettingsText(JSON.stringify(ss || {}, null, 2)); setSiteSettings(ss || {});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Admin data could not be loaded.');
     } finally { setBusy(false); }
@@ -62,7 +62,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
         </div>
 
         <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[#dfe5ef] bg-white p-2 shadow-sm">
-          {(['overview','shipments','users','rates','messages','site','audit'] as const).map(item => <button key={item} onClick={()=>setTab(item)} className={'whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black capitalize transition '+(tab===item?'bg-[#4D148C] text-white':'text-slate-600 hover:bg-slate-100')}>{item}</button>)}
+          {(['overview','shipments','users','rates','requests','messages','site','settings','audit'] as const).map(item => <button key={item} onClick={()=>setTab(item)} className={'whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black capitalize transition '+(tab===item?'bg-[#4D148C] text-white':'text-slate-600 hover:bg-slate-100')}>{item}</button>)}
         </div>
 
         {tab==='overview' && <div className="grid gap-5 lg:grid-cols-2">
