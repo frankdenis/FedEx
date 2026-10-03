@@ -56,6 +56,8 @@ export default function App() {
     return params.get(name) || '';
   };
 
+  const dedicatedDashboardShell = currentPath === '/' || currentPath.startsWith('/admin');
+
   // Route Dispatcher
   const renderCurrentPage = () => {
     if (currentPath === '/' || currentPath === '') {
@@ -151,13 +153,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#FF6600] selection:text-white">
-      {/* Sticky Main Navigation */}
-      <Navbar
-        currentPath={currentPath}
-        onNavigate={navigate}
-        onOpenSearch={() => setIsSearchOpen(true)}
-        onOpenChat={() => setIsChatOpen(true)}
-      />
+      {!dedicatedDashboardShell && (
+        <Navbar
+          currentPath={currentPath}
+          onNavigate={navigate}
+          onOpenSearch={() => setIsSearchOpen(true)}
+          onOpenChat={() => setIsChatOpen(true)}
+        />
+      )}
 
       {/* Main Routed Page Content */}
       <main className="flex-1 overflow-hidden">
@@ -174,8 +177,7 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* Comprehensive Footer with Mandatory Disclaimer */}
-      <Footer onNavigate={navigate} />
+      {!dedicatedDashboardShell && <Footer onNavigate={navigate} />}
 
       {/* Global Search Dialog (Cmd+K) */}
       <GlobalSearchModal
@@ -192,7 +194,7 @@ export default function App() {
       />
 
       {/* Floating Bottom-Right Chat Launcher Button */}
-      {!isChatOpen && (
+      {!dedicatedDashboardShell && !isChatOpen && (
         <button
           onClick={() => setIsChatOpen(true)}
           className="fixed bottom-6 right-6 z-40 px-4 py-3 rounded-full bg-gradient-to-r from-[#1F0838] via-[#4D148C] to-[#1F0838] text-white shadow-2xl border border-purple-400/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 group cursor-pointer"
