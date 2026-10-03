@@ -16,7 +16,9 @@ const tableMap: Record<string,string> = {
   siteSettings: 'site_settings',
 };
 
-const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
+const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
+
+const columnMap: Record<string,string> = {
   ownerUid: 'owner_uid',
   userId: 'user_id',
   threadId: 'thread_id',
@@ -73,7 +75,8 @@ const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst c
   paymentProof: 'payment_proof',
 };
 
-function tableName(name:string){ return tableMap[name] || name; }\nfunction keyColumn(name:string){ return keyMap[name] || 'id'; }
+function tableName(name:string){ return tableMap[name] || name; }
+function keyColumn(name:string){ return keyMap[name] || 'id'; }
 function col(name:string){ return columnMap[name] || name; }
 
 function encodeValue(value:any):any {
