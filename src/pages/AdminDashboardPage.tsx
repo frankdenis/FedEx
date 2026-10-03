@@ -1,493 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import {
-  ShieldCheck,
-  Package,
-  Clock,
-  AlertTriangle,
-  Users,
-  Truck,
-  Building,
-  DollarSign,
-  BarChart3,
-  Search,
-  CheckCircle2,
-  RefreshCw,
-  ExternalLink,
-  Edit,
-  Save,
-  MessageSquare,
-  HardDrive,
-} from 'lucide-react';
-import {
-  getShipments,
-  updateShipmentStatus,
-  getDrivers,
-  getFacilities,
-  getSupportTickets,
-  getUsers,
-} from '../lib/store';
-import { Shipment, TrackingStatus, Driver, Facility, SupportTicket } from '../types';
-import { StatusBadge } from '../components/common/StatusBadge';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Activity, BarChart3, CheckCircle2, CircleDollarSign, FileText, MessageSquare, RefreshCw, ShieldCheck, ToggleLeft, ToggleRight, Truck, Users, XCircle } from 'lucide-react';
+import { api } from '../lib/api';
 
-interface AdminDashboardPageProps {
-  onNavigate: (path: string) => void;
-}
+interface AdminDashboardPageProps { onNavigate: (path: string) => void; }
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<
-    'overview' | 'shipments' | 'drivers' | 'facilities' | 'rates' | 'tickets'
-  >('overview');
+  const [me, setMe] = useState<any>(null);
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [rates, setRates] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [threads, setThreads] = useState<any[]>([]);
+  const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'messages'|'audit'>('overview');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const [shipments, setShipments] = useState<Shipment[]>(getShipments());
-  const [drivers, setDrivers] = useState<Driver[]>(getDrivers());
-  const [facilities, setFacilities] = useState<Facility[]>(getFacilities());
-  const [tickets, setTickets] = useState<SupportTicket[]>(getSupportTickets());
-  const [users, setUsers] = useState(getUsers());
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-
-  // Status Editor Modal
-  const [editingShipment, setEditingShipment] = useState<Shipment | null>(null);
-  const [newStatus, setNewStatus] = useState<TrackingStatus>('In Transit');
-  const [statusLocation, setStatusLocation] = useState('');
-  const [statusComment, setStatusComment] = useState('');
-
-  const refreshData = () => {
-    setShipments(getShipments());
-    setDrivers(getDrivers());
-    setFacilities(getFacilities());
-    setTickets(getSupportTickets());
-    setUsers(getUsers());
+  const load = async () => {
+    setBusy(true); setError('');
+    try {
+      const profile = await api.me();
+      setMe(profile);
+      if (!profile.admin) return;
+      const [s,u,r,l,t] = await Promise.all([api.shipments(), api.adminUsers(), api.adminRates(), api.adminAuditLogs(), api.supportThreads()]);
+      setShipments(Array.isArray(s) ? s : (s as any)?.shipments || []);
+      setUsers(u || []); setRates(r || []); setLogs(l || []); setThreads(t || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Admin data could not be loaded.');
+    } finally { setBusy(false); }
   };
 
-  useEffect(() => {
-    refreshData();
-    window.addEventListener('nexora-storage-update', refreshData);
-    return () => window.removeEventListener('nexora-storage-update', refreshData);
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const openStatusEditor = (s: Shipment) => {
-    setEditingShipment(s);
-    setNewStatus(s.status);
-    setStatusLocation(`${s.recipient.city} International Airport Hub`);
-    setStatusComment(`Physical scan completed at automated gateway sorter.`);
-  };
+  const paid = useMemo(() => shipments.filter(s => String(s.paymentStatus).toLowerCase() === 'paid').length, [shipments]);
+  const pending = useMemo(() => shipments.filter(s => String(s.paymentStatus).toLowerCase() !== 'paid').length, [shipments]);
+  const activeRates = rates.filter(r => r.active).length;
 
-  const handleSaveStatus = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingShipment) return;
-
-    if (!editingShipment.trackingNumber) return;
-
-    updateShipmentStatus(
-      editingShipment.trackingNumber,
-      newStatus,
-      statusLocation || 'FedEx World Hub (Memphis)',
-      statusComment || `Status updated to ${newStatus}`
-    );
-
-    setEditingShipment(null);
-    refreshData();
-  };
-
-  const filteredShipments = shipments.filter(s => {
-    const matchesSearch =
-      (s.trackingNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.recipient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.sender.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.recipient.city.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const availableStatuses: TrackingStatus[] = [
-    'Shipment Created',
-    'Label Generated',
-    'Pickup Scheduled',
-    'Picked Up',
-    'At Origin Facility',
-    'Departed Origin',
-    'In Transit',
-    'Arrived at Destination Country',
-    'Customs Clearance',
-    'Customs Cleared',
-    'At Destination Facility',
-    'Out for Delivery',
-    'Delivery Attempted',
-    'Delivered',
-    'Exception',
-    'Shipment Delayed',
-    'Returned to Sender',
-  ];
+  if (me && !me.admin) {
+    return <div className="min-h-[70vh] grid place-items-center px-5"><div className="max-w-md rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl"><XCircle className="mx-auto h-10 w-10 text-rose-500"/><h1 className="mt-4 text-2xl font-black text-slate-900">Administrator access required</h1><p className="mt-2 text-sm text-slate-500">This control center is restricted to accounts with the admin role in Supabase.</p><button onClick={()=>onNavigate('/')} className="mt-6 rounded-xl bg-[#4D148C] px-5 py-3 text-sm font-bold text-white">Return home</button></div></div>;
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Admin Header Banner */}
-      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold uppercase">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Global Dispatch & Flight Ops Control
-            </span>
+    <div className="min-h-[calc(100vh-150px)] bg-[#f6f8fd] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1500px] space-y-6">
+        <header className="overflow-hidden rounded-[30px] bg-gradient-to-br from-[#19052e] via-[#4D148C] to-[#7b21dc] p-6 text-white shadow-2xl sm:p-8">
+          <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+            <div><div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em]"><ShieldCheck className="h-3.5 w-3.5"/> Admin control center</div><h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">FedEx Operations Command</h1><p className="mt-2 max-w-2xl text-sm text-white/75">Control production shipments, accounts, rates, payments visibility, customer conversations and audit activity from one secured workspace.</p></div>
+            <button onClick={load} disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#4D148C] disabled:opacity-60"><RefreshCw className={busy?'h-4 w-4 animate-spin':'h-4 w-4'}/> Refresh live data</button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-2 text-white font-display">
-            FedEx Global Operations Console
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Authenticated operations user • Live operations data
-          </p>
+        </header>
+
+        {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{error}</div>}
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {[
+            ['Shipments', shipments.length, Truck], ['Paid', paid, CheckCircle2], ['Awaiting payment', pending, CircleDollarSign], ['Accounts', users.length, Users], ['Active rates', activeRates, BarChart3]
+          ].map(([label,value,Icon]: any) => <div key={label as string} className="rounded-2xl border border-[#e0e5ef] bg-white p-4 shadow-sm"><Icon className="h-5 w-5 text-[#4D148C]"/><div className="mt-3 text-2xl font-black text-[#16275d]">{value}</div><div className="mt-1 text-[11px] font-bold text-slate-500">{label}</div></div>)}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => onNavigate('/chat')}
-            className="px-4 py-2 rounded-xl bg-[#4D148C] hover:bg-purple-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all border border-purple-400/40"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-[#FF6600]" /> Google Chat Dispatch
-          </button>
-          <button
-            onClick={() => onNavigate('/drive')}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-all"
-          >
-            <HardDrive className="w-3.5 h-3.5 text-amber-400" /> Drive Documents
-          </button>
-          <button
-            onClick={() => onNavigate('/track')}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700"
-          >
-            <ExternalLink className="w-3.5 h-3.5" /> Public Tracking View
-          </button>
-
+        <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[#dfe5ef] bg-white p-2 shadow-sm">
+          {(['overview','shipments','users','rates','messages','audit'] as const).map(item => <button key={item} onClick={()=>setTab(item)} className={'whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black capitalize transition '+(tab===item?'bg-[#4D148C] text-white':'text-slate-600 hover:bg-slate-100')}>{item}</button>)}
         </div>
+
+        {tab==='overview' && <div className="grid gap-5 lg:grid-cols-2">
+          <section className="rounded-3xl border border-[#dfe5ef] bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Activity className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black text-[#17285e]">Production shipment control</h2></div><div className="mt-5 space-y-3">{shipments.slice(0,8).map(s=><div key={s.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3"><div><div className="text-xs font-black text-slate-800">{s.trackingNumber || 'Awaiting carrier tracking'}</div><div className="mt-1 text-[10px] text-slate-500">{s.service} · {s.status}</div></div><div className={'rounded-full px-2.5 py-1 text-[9px] font-black '+(String(s.paymentStatus).toLowerCase()==='paid'?'bg-emerald-50 text-emerald-700':'bg-amber-50 text-amber-700')}>{s.paymentStatus || 'Pending'}</div></div>)}{!shipments.length&&<p className="py-10 text-center text-sm text-slate-500">No production shipments yet.</p>}</div></section>
+          <section className="rounded-3xl border border-[#dfe5ef] bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black text-[#17285e]">Customer communication</h2></div><div className="mt-5 space-y-3">{threads.slice(0,8).map(t=><button key={t.id} onClick={()=>setTab('messages')} className="w-full rounded-2xl border border-slate-100 p-3 text-left hover:border-purple-200"><div className="flex justify-between gap-3"><span className="text-xs font-black text-slate-800">{t.subject}</span><span className="text-[9px] font-black uppercase text-[#4D148C]">{t.status}</span></div><div className="mt-1 text-[10px] text-slate-500">Priority: {t.priority}</div></button>)}{!threads.length&&<p className="py-10 text-center text-sm text-slate-500">No customer conversations yet.</p>}</div></section>
+        </div>}
+
+        {tab==='shipments' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-[#17285e]">All production shipments</h2></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-xs"><thead className="bg-slate-50 text-[9px] font-black uppercase text-slate-500"><tr><th className="p-4">Tracking</th><th className="p-4">Service</th><th className="p-4">Status</th><th className="p-4">Payment</th><th className="p-4">Created</th></tr></thead><tbody className="divide-y divide-slate-100">{shipments.map(s=><tr key={s.id}><td className="p-4 font-black">{s.trackingNumber || 'Pending carrier'}</td><td className="p-4">{s.service}</td><td className="p-4">{s.status}</td><td className="p-4">{s.paymentStatus}</td><td className="p-4">{s.createdAt ? new Date(s.createdAt).toLocaleString() : '—'}</td></tr>)}</tbody></table></div></section>}
+
+        {tab==='users' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-[#17285e]">Registered accounts</h2><p className="mt-1 text-[11px] text-slate-500">Account status is controlled server-side by the admin role.</p></div><div className="divide-y divide-slate-100">{users.map(u=><div key={u.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="text-sm font-black text-slate-800">{[u.firstName,u.lastName].filter(Boolean).join(' ') || 'Customer'}</div><div className="text-[11px] text-slate-500">{u.email || 'Anonymous guest'} · {u.role}</div></div><button onClick={async()=>{await api.adminUpdateUserStatus(u.id,u.status==='suspended'?'active':'suspended');await load();}} className={'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black '+(u.status==='suspended'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700')}>{u.status==='suspended'?<ToggleLeft className="h-4 w-4"/>:<ToggleRight className="h-4 w-4"/>}{u.status==='suspended'?'Reactivate':'Suspend'}</button></div>)}</div></section>}
+
+        {tab==='rates' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-[#17285e]">Production shipping rates</h2><p className="mt-1 text-[11px] text-slate-500">Rates here are used by the server-side quote engine. No browser-side pricing is trusted.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-xs"><thead className="bg-slate-50 text-[9px] font-black uppercase text-slate-500"><tr><th className="p-4">Service</th><th className="p-4">Route</th><th className="p-4">Base</th><th className="p-4">Per kg</th><th className="p-4">Window</th><th className="p-4">State</th><th className="p-4">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{rates.map(r=><tr key={r.id}><td className="p-4 font-black">{r.service}</td><td className="p-4">{r.originCountry} → {r.destCountry}</td><td className="p-4">{r.currency} {r.baseRate}</td><td className="p-4">{r.perKgRate}</td><td className="p-4">{r.estDaysMin}–{r.estDaysMax} days</td><td className="p-4">{r.active?'Active':'Disabled'}</td><td className="p-4"><button disabled={!r.active} onClick={async()=>{await api.adminDisableRate(r.id);await load();}} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black text-rose-700 disabled:opacity-40">Disable</button></td></tr>)}</tbody></table></div></section>}
+
+        {tab==='messages' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm p-5"><div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black text-[#17285e]">Fast communication dashboard</h2></div><p className="mt-2 text-xs text-slate-500">Customer messages, payment references and shipment questions are routed through the secured support API. A payment reference is informational only; payment status is confirmed by Stripe webhooks.</p><div className="mt-5 space-y-3">{threads.map(t=><div key={t.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex justify-between gap-3"><div className="text-sm font-black">{t.subject}</div><div className="text-[9px] font-black uppercase text-[#4D148C]">{t.status}</div></div><div className="mt-1 text-[10px] text-slate-500">Priority {t.priority} · {t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</div></div>)}</div></section>}
+
+        {tab==='audit' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-[#17285e]">Audit activity</h2></div><div className="divide-y divide-slate-100">{logs.map(l=><div key={l.id} className="p-4"><div className="text-xs font-black text-slate-800">{l.action}</div><div className="mt-1 text-[10px] text-slate-500">{l.actorEmail || l.actorUid || 'System'} · {l.details || l.shipmentNumber || l.paymentReference || ''}</div></div>)}</div></section>}
       </div>
-
-      {/* KPI Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Active Air Manifests</span>
-          <div className="text-2xl font-mono font-extrabold text-slate-900 mt-1">{shipments.length}</div>
-          <span className="text-[11px] text-cyan-700 font-medium">Tracking in live registry</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">In Customs Queue</span>
-          <div className="text-2xl font-mono font-extrabold text-amber-600 mt-1">
-            {shipments.filter(s => s.status === 'Customs Clearance').length}
-          </div>
-          <span className="text-[11px] text-amber-700 font-medium">Clearance verification</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Active Courier Fleet</span>
-          <div className="text-2xl font-mono font-extrabold text-blue-600 mt-1">
-            {drivers.filter(d => d.status === 'Available' || d.status === 'On Delivery').length}
-          </div>
-          <span className="text-[11px] text-blue-700 font-medium">On-duty field drivers</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Logistics Facilities</span>
-          <div className="text-2xl font-mono font-extrabold text-purple-600 mt-1">
-            {facilities.length}
-          </div>
-          <span className="text-[11px] text-purple-700 font-medium">International Hubs & Gateways</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Support Tickets</span>
-          <div className="text-2xl font-mono font-extrabold text-rose-600 mt-1">
-            {tickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length}
-          </div>
-          <span className="text-[11px] text-rose-700 font-medium">Pending inquiry triage</span>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-slate-200 flex items-center gap-6 text-sm font-semibold overflow-x-auto no-scrollbar">
-        {[
-          { id: 'overview', label: 'Shipment Manager & Status Advance' },
-          { id: 'drivers', label: 'Fleet & Couriers' },
-          { id: 'facilities', label: 'Hub Capacity' },
-          { id: 'tickets', label: 'Support Queue' },
-        ].map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id as any)}
-            className={`pb-3 whitespace-nowrap transition-colors border-b-2 -mb-[2px] ${
-              activeTab === t.id
-                ? 'border-cyan-600 text-cyan-600 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* TAB 1: SHIPMENT MANAGER WITH LIVE STATUS ADVANCE */}
-      {activeTab === 'overview' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pb-2">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Consignment Dispatch & Status Controls</h2>
-              <p className="text-xs text-slate-500">
-                Shipment status changes are disabled until the production operations API is connected.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Filter shipments..."
-                  className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none"
-                />
-              </div>
-
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="text-xs p-2 rounded-xl border border-slate-300 bg-white"
-              >
-                <option>All</option>
-                {availableStatuses.map(st => (
-                  <option key={st}>{st}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600 divide-y divide-slate-100">
-              <thead className="text-[10px] font-mono uppercase text-slate-400 font-semibold bg-slate-50/50">
-                <tr>
-                  <th className="py-3 px-3">Tracking #</th>
-                  <th className="py-3 px-3">Current Status</th>
-                  <th className="py-3 px-3">Service Tier</th>
-                  <th className="py-3 px-3">Origin Hub</th>
-                  <th className="py-3 px-3">Destination Hub</th>
-                  <th className="py-3 px-3">Latest Event</th>
-                  <th className="py-3 px-3 text-right">Dispatch Control</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredShipments.map(s => (
-                  <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-3">
-                      <button
-                        onClick={() => onNavigate(`/track?q=${s.trackingNumber}`)}
-                        className="font-mono font-bold text-cyan-700 hover:text-cyan-900 underline"
-                      >
-                        {s.trackingNumber}
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <StatusBadge status={s.status} size="sm" />
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-900">
-                      {s.service}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      {s.sender.city}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      {s.recipient.city}
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-500 max-w-xs truncate">
-                      {s.events[0]?.description || 'Shipment created'}
-                    </td>
-                    <td className="py-3.5 px-3 text-right">
-                      <span className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 font-bold text-xs inline-flex items-center">
-                        Live API required
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: DRIVERS & FLEET */}
-      {activeTab === 'drivers' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-base font-bold text-slate-900">Active Field Couriers & Fleet</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {drivers.map(d => (
-              <div key={d.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-bold text-sm text-slate-900">{d.name}</span>
-                    <div className="text-[11px] text-slate-500 font-mono">ID: {d.driverId}</div>
-                  </div>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      d.status === 'Available' || d.status === 'On Delivery' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {d.status.toUpperCase()}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-600">
-                  Vehicle: <strong className="text-slate-900">{d.vehicle}</strong>
-                </div>
-                <div className="text-xs text-slate-600">
-                  Assigned Region: <span className="text-cyan-700 font-semibold">{d.region}</span>
-                </div>
-                <div className="text-xs text-slate-500 pt-1">
-                  Active Parcels on Van: <strong>{d.assignedShipmentsCount}</strong>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: FACILITIES */}
-      {activeTab === 'facilities' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-base font-bold text-slate-900">International Logistics Facilities & Gateways</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {facilities.map(f => (
-              <div key={f.id} className="p-5 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-mono text-xs font-bold text-cyan-600 uppercase">{f.id}</span>
-                    <h3 className="font-bold text-base text-slate-900">{f.name}</h3>
-                  </div>
-                  <span className="text-xs font-mono text-slate-400">{f.country}</span>
-                </div>
-                <p className="text-xs text-slate-500">Classification: {f.type}</p>
-                <div className="pt-2">
-                  <div className="flex justify-between text-xs text-slate-600 mb-1">
-                    <span>Sortation Throughput Capacity:</span>
-                    <span className="font-mono font-bold text-slate-900">{f.capacityPercentage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${
-                        f.capacityPercentage > 80 ? 'bg-amber-500' : 'bg-cyan-600'
-                      }`}
-                      style={{ width: `${f.capacityPercentage}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: SUPPORT TICKETS */}
-      {activeTab === 'tickets' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-base font-bold text-slate-900">Customer Support Ticket Triage</h2>
-          <div className="divide-y divide-slate-100">
-            {tickets.map(t => (
-              <div key={t.id} className="py-4 flex items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">{t.id}</span>
-                    <span className="text-xs font-bold text-slate-900">{t.subject}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-semibold uppercase">
-                      {t.priority}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-1">{t.message}</p>
-                </div>
-                <button
-                  onClick={() => alert(`Responding to customer ticket ${t.id}`)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-xs font-semibold shrink-0"
-                >
-                  Respond
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* QUICK STATUS ADVANCE MODAL */}
-      {editingShipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <span className="text-xs font-mono uppercase text-cyan-600 font-bold">Dispatch Status Controller</span>
-                <h3 className="text-lg font-extrabold text-slate-900">
-                  Update Consignment {editingShipment.trackingNumber}
-                </h3>
-              </div>
-              <StatusBadge status={editingShipment.status} size="sm" />
-            </div>
-
-            <form onSubmit={handleSaveStatus} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">New Milestone Status *</label>
-                <select
-                  value={newStatus}
-                  onChange={e => setNewStatus(e.target.value as TrackingStatus)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-semibold text-slate-900 bg-white focus:ring-2 focus:ring-cyan-500"
-                >
-                  {availableStatuses.map(st => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">Scan Facility / Location</label>
-                <input
-                  type="text"
-                  value={statusLocation}
-                  onChange={e => setStatusLocation(e.target.value)}
-                  placeholder="e.g. Frankfurt Air Cargo Facility (FRA-HUB)"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">Audit Log Description / Dispatch Remarks</label>
-                <textarea
-                  rows={3}
-                  value={statusComment}
-                  onChange={e => setStatusComment(e.target.value)}
-                  placeholder="e.g. Package cleared customs inspection and released to regional sorting conveyor."
-                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-
-              <div className="p-3 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-900 text-[11px]">
-                Saving this status will immediately record a timestamped scan event in the immutable tracking audit log and update the live telemetry map for all customers!
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingShipment(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold flex items-center gap-1.5 shadow-sm"
-                >
-                  <Save className="w-3.5 h-3.5" /> Save & Broadcast
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
