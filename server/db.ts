@@ -10,7 +10,7 @@ const tableMap: Record<string,string> = {
   shipments: 'shipments',
 };
 
-const columnMap: Record<string,string> = {
+const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
   ownerUid: 'owner_uid',
   trackingNumber: 'tracking_number',
   carrierTrackingNumber: 'carrier_tracking_number',
@@ -46,7 +46,7 @@ const columnMap: Record<string,string> = {
   lastName: 'last_name',
 };
 
-function tableName(name:string){ return tableMap[name] || name; }
+function tableName(name:string){ return tableMap[name] || name; }\nfunction keyColumn(name:string){ return keyMap[name] || 'id'; }
 function col(name:string){ return columnMap[name] || name; }
 
 function encodeValue(value:any):any {
@@ -98,7 +98,7 @@ class Query {
     if(this.max) q=q.limit(this.max);
     const {data,error}=await q;
     if(error) throw error;
-    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(row), new DocumentRef(this.name, String(row.id))))};
+    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(this.name,row), new DocumentRef(this.name, String(row[keyColumn(this.name)]))))};
   }
 }
 
@@ -111,17 +111,17 @@ class DocumentSnapshot {
 class DocumentRef {
   constructor(private name:string, private id:string){}
   async get(){
-    const {data,error}=await supabaseAdmin.from(tableName(this.name)).select('*').eq('id',this.id).maybeSingle();
+    const {data,error}=await supabaseAdmin.from(tableName(this.name)).select('*').eq(keyColumn(this.name),this.id).maybeSingle();
     if(error) throw error;
-    return new DocumentSnapshot(decodeRow(data), new DocumentRef(this.name, this.id));
+    return new DocumentSnapshot(decodeRow(this.name,data), new DocumentRef(this.name, this.id));
   }
   async set(value:any, options?:{merge?:boolean}){
     const payload=encodeObject(value);
     if(options?.merge){
-      const {error}=await supabaseAdmin.from(tableName(this.name)).upsert({id:this.id,...payload},{onConflict:'id'});
+      const {error}=await supabaseAdmin.from(tableName(this.name)).upsert({[keyColumn(this.name)]:this.id,...payload},{onConflict:keyColumn(this.name)});
       if(error) throw error;
     }else{
-      const {error}=await supabaseAdmin.from(tableName(this.name)).insert({id:this.id,...payload});
+      const {error}=await supabaseAdmin.from(tableName(this.name)).insert({[keyColumn(this.name)]:this.id,...payload});
       if(error) throw error;
     }
   }
@@ -137,7 +137,7 @@ class DocumentRef {
         payload[col(key)] = encodeValue(valueItem);
       }
     }
-    const {error}=await supabaseAdmin.from(tableName(this.name)).update(payload).eq('id',this.id);
+    const {error}=await supabaseAdmin.from(tableName(this.name)).update(payload).eq(keyColumn(this.name),this.id);
     if(error) throw error;
   }
 }
@@ -150,7 +150,7 @@ class Collection {
   limit(value:number){ return new Query(this.name).limit(value); }
   async add(value:any){
     const id=crypto.randomUUID();
-    const {data,error}=await supabaseAdmin.from(tableName(this.name)).insert({id,...encodeObject(value)}).select('*').single();
+    const {error}=await supabaseAdmin.from(tableName(this.name)).insert({[keyColumn(this.name)]:id,...encodeObject(value)});
     if(error) throw error;
     return new DocumentRef(this.name,id);
   }
