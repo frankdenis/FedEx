@@ -609,5 +609,6 @@ app.post('/api/support/threads/:threadId/messages', requireAuth, async (req, res
   await db.collection('supportThreads').doc(id).update({ updatedAt: now, lastMessageAt: now, status: req.user!.admin ? 'in_progress' : 'open' });
   return res.status(201).json({ id: messageId });
 });
-\napp.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));
+
+app.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));
 app.listen(port, () => console.log('FedEx logistics API listening on port ' + port));
