@@ -25,3 +25,5 @@ jobs:
 
       - name: Build frontend
         run: bun run build
+
+# Production validation remains enabled for pull requests.
