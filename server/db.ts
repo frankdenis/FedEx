@@ -8,6 +8,8 @@ const tableMap: Record<string,string> = {
   stripeEvents: 'stripe_events',
   auditLogs: 'audit_logs',
   shipments: 'shipments',
+  supportThreads: 'support_threads',
+  supportMessages: 'support_messages',
 };
 
 const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
