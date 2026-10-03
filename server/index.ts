@@ -474,6 +474,17 @@ app.post('/api/shipments/:trackingNumber/events', requireAuth, requireAdmin, asy
 });
 
 
+app.get('/api/admin/site-settings', requireAuth, requireAdmin, async (_req,res)=>{
+  const snapshot=await db.collection('siteSettings').doc('homepage').get();
+  return res.json(snapshot.exists ? snapshot.data()?.value || {} : {});
+});
+app.put('/api/admin/site-settings', requireAuth, requireAdmin, async (req,res)=>{
+  const value=req.body||{}, ref=db.collection('siteSettings').doc('homepage');
+  await ref.set({id:'homepage',value,updatedAt:new Date().toISOString(),updatedBy:req.user!.uid},{merge:true});
+  await db.collection('auditLogs').add({actorUid:req.user!.uid,actorEmail:req.user!.email,action:'site_settings.updated',details:'homepage',timestamp:FieldValue.serverTimestamp()});
+  return res.json(value);
+});
+
 app.get('/api/admin/users', requireAuth, requireAdmin, async (_req, res) => {
   const rows = await db.collection('users').orderBy('createdAt', 'desc').limit(200).get();
   return res.json(rows.docs.map((doc: any) => doc.data()));
