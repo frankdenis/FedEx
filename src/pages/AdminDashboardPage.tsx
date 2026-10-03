@@ -62,7 +62,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
         </div>
 
         <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[#dfe5ef] bg-white p-2 shadow-sm">
-          {(['overview','shipments','users','rates','messages','site','audit'] as const).map(item => <button key={item} onClick={()=>setTab(item)} className={'whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black capitalize transition '+(tab===item?'bg-[#4D148C] text-white':'text-slate-600 hover:bg-slate-100')}>{item}</button>)}
+          {(['overview','shipments','users','rates','requests','messages','site','settings','audit'] as const).map(item => <button key={item} onClick={()=>setTab(item)} className={'whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black capitalize transition '+(tab===item?'bg-[#4D148C] text-white':'text-slate-600 hover:bg-slate-100')}>{item}</button>)}
         </div>
 
         {tab==='overview' && <div className="grid gap-5 lg:grid-cols-2">
