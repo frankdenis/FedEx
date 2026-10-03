@@ -12,9 +12,13 @@ const tableMap: Record<string,string> = {
   supportMessages: 'support_messages',
   guestShippingRequests: 'guest_shipping_requests',
   siteSettings: 'site_settings',
+  guestShippingRequests: 'guest_shipping_requests',
+  siteSettings: 'site_settings',
 };
 
-const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
+const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
+
+const columnMap: Record<string,string> = {
   ownerUid: 'owner_uid',
   userId: 'user_id',
   threadId: 'thread_id',
@@ -52,6 +56,15 @@ const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst c
   actorEmail: 'actor_email',
   shipmentNumber: 'shipment_number',
   firstName: 'first_name',
+  requestNumber: 'request_number',
+  verificationStatus: 'verification_status',
+  verificationNotes: 'verification_notes',
+  selectedService: 'selected_service',
+  quotedCost: 'quoted_cost',
+  stripeSessionId: 'stripe_session_id',
+  paymentProof: 'payment_proof',
+  lastMessageAt: 'last_message_at',
+  updatedBy: 'updated_by',
   lastName: 'last_name',
   requestNumber: 'request_number',
   verificationStatus: 'verification_status',
@@ -62,7 +75,8 @@ const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst c
   paymentProof: 'payment_proof',
 };
 
-function tableName(name:string){ return tableMap[name] || name; }\nfunction keyColumn(name:string){ return keyMap[name] || 'id'; }
+function tableName(name:string){ return tableMap[name] || name; }
+function keyColumn(name:string){ return keyMap[name] || 'id'; }
 function col(name:string){ return columnMap[name] || name; }
 
 function encodeValue(value:any):any {
