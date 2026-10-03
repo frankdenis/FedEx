@@ -3,10 +3,11 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   Activity, ArrowRight, Bell, Box, BriefcaseBusiness, CheckCircle2, ChevronDown,
   ChevronLeft, ChevronRight, CircleHelp, Clock3, Globe2, Headphones, Layers3,
-  MapPin, Package, Plane, Search, ShieldCheck, Sparkles, UserRound
+  MapPin, Package, Plane, Search, ShieldCheck, UserRound, Menu, X
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { LOGISTICS_IMAGES } from '../data/siteContent';
+import { Logo } from '../components/common/Logo';
 
 interface HomePageProps { onNavigate: (path: string) => void; }
 
@@ -41,6 +42,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const [error, setError] = useState('');
   const [shipments, setShipments] = useState<any[]>([]);
   const [site, setSite] = useState<any>({});
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const active = slides[slide];
 
   useEffect(() => {
@@ -83,10 +85,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     <div className="min-h-screen bg-[#f8fbff] text-[#10245e]">
       <div className="flex min-h-screen">
         <aside className="hidden w-[218px] shrink-0 border-r border-[#dce5f1] bg-white lg:flex lg:flex-col">
-          <div className="flex h-[74px] items-center border-b border-[#e7edf5] px-7">
-            <button onClick={() => onNavigate('/')} aria-label="FedEx home" className="text-[36px] font-black tracking-[-.095em] text-[#4D148C]">
-              Fed<span className="text-[#ff6600]">Ex</span>
-            </button>
+          <div className="flex h-[74px] items-center border-b border-[#e7edf5] px-6">
+            <button onClick={() => onNavigate('/')} aria-label="FedEx home" className="block w-[112px]"><Logo/></button>
           </div>
           <nav className="flex-1 space-y-1.5 p-4 pt-6">
             {nav.map(([label, Icon, path], index) => (
@@ -94,7 +94,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 key={label}
                 whileHover={{ x: 3 }}
                 whileTap={{ scale: .985 }}
-                onClick={() => onNavigate(path)}
+                onClick={() => { setMobileNavOpen(false); onNavigate(path); }}
                 className={'group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-[12px] font-extrabold transition ' +
                   (index === 0
                     ? 'bg-gradient-to-r from-[#4D148C] via-[#7423d6] to-[#9b27ff] text-white shadow-[0_10px_24px_rgba(111,37,216,.25)]'
@@ -123,9 +123,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         <div className="min-w-0 flex-1">
           <header className="sticky top-0 z-50 h-[74px] border-b border-[#dce5f1] bg-white/95 shadow-[0_8px_30px_rgba(34,52,92,.07)] backdrop-blur-2xl">
             <div className="flex h-full items-center gap-4 px-4 sm:px-6 lg:px-8">
-              <button onClick={() => onNavigate('/')} className="shrink-0 text-[31px] font-black tracking-[-.09em] text-[#4D148C] lg:hidden">
-                Fed<span className="text-[#ff6600]">Ex</span>
+              <button onClick={() => setMobileNavOpen(v => !v)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#dce4ef] bg-white text-[#25396d] lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}>
+                {mobileNavOpen ? <X className="h-5 w-5"/> : <Menu className="h-5 w-5"/>}
               </button>
+              <button onClick={() => onNavigate('/')} className="shrink-0 w-[92px] lg:hidden" aria-label="FedEx home"><Logo/></button>
               <button onClick={() => onNavigate('/track')} className="hidden h-11 max-w-[610px] flex-1 items-center gap-3 rounded-2xl border border-[#d6e0ee] bg-[#fbfcff] px-4 text-left shadow-sm md:flex">
                 <Search className="h-4 w-4 text-[#71819e]" />
                 <span className="truncate text-xs font-bold text-[#7d8ba6]">Search tracking number, shipment, or destination...</span>
@@ -149,6 +150,31 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             </div>
           </header>
 
+          {/* mobile dashboard navigation */}
+          <AnimatePresence>
+            {mobileNavOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="border-b border-[#dce5f1] bg-white lg:hidden"
+              >
+                <nav className="grid gap-1.5 p-3 sm:grid-cols-2">
+                  {nav.map(([label, Icon, path]) => (
+                    <button
+                      key={label}
+                      onClick={() => { setMobileNavOpen(false); onNavigate(path); }}
+                      className="flex items-center gap-3 rounded-xl border border-[#e5eaf2] bg-[#fbfcff] px-3.5 py-3 text-left text-xs font-black text-[#253866]"
+                    >
+                      <Icon className="h-4 w-4 text-[#4D148C]" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <main>
             <section className="relative overflow-hidden border-b border-[#dfe6f0] bg-white">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_30%,rgba(77,20,140,.10),transparent_31%),radial-gradient(circle_at_18%_0%,rgba(42,135,255,.11),transparent_28%)]" />
@@ -157,10 +183,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                   <div className="min-w-0 pt-2">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div key={active.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .35 }}>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[#ddd4f4] bg-[#faf8ff] px-3 py-1.5 text-[10px] font-black text-[#4D148C]">
-                          <Sparkles className="h-3.5 w-3.5" /> {active.eyebrow}
+                        <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe7f5] bg-white px-3 py-1.5 text-[10px] font-black text-[#355181] shadow-sm">
+                          <span className="h-2 w-2 rounded-full bg-[#18b87b]" /> Welcome back · Good Morning
                         </div>
-                        <h1 className="mt-5 text-[42px] font-black leading-[.94] tracking-[-.06em] text-[#10245e] sm:text-6xl lg:text-[68px]">
+                        <h1 className="mt-5 text-[44px] font-black leading-[.92] tracking-[-.065em] text-[#0b1f57] sm:text-6xl lg:text-[70px]">
                           {site.headline || active.title}
                           <span className="block bg-gradient-to-r from-[#4D148C] via-[#8c1ee8] to-[#ef3b24] bg-clip-text text-transparent">{site.accent || active.accent}</span>
                         </h1>
@@ -178,7 +204,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                         <button className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-[#4D148C] to-[#7627d9] text-white shadow-md"><ArrowRight className="h-5 w-5" /></button>
                       </div>
                       {error && <div className="mt-2 px-2 text-[11px] font-bold text-rose-600">{error}</div>}
-                      <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-[#159e6d]"><span className="h-2 w-2 rounded-full bg-[#18b87b]" /> Live production tracking</div>
                     </form>
 
                     <div className="mt-5 grid grid-cols-3 gap-2.5">
@@ -208,9 +233,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.img
                           key={active.id}
-                          src={site.heroImage || LOGISTICS_IMAGES.distributionHub}
+                          src={site.heroImage || LOGISTICS_IMAGES.cargoFreighter}
                           alt="Premium logistics operations and parcel distribution"
-                          className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.16] contrast-[1.1]"
+                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.12] contrast-[1.1]"
                           initial={{ opacity: 0, scale: 1.025 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0 }}
@@ -219,11 +244,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       </AnimatePresence>
                       <div className="absolute inset-0 bg-gradient-to-r from-white/55 via-transparent to-[#4D148C]/15" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#101d48]/45 via-transparent to-white/5" />
-
-                      <div className="absolute left-5 top-5 rounded-2xl border border-white/80 bg-white/94 px-4 py-3 shadow-xl backdrop-blur-xl">
-                        <div className="text-[9px] font-black uppercase tracking-[.16em] text-[#4D148C]">Live workspace</div>
-                        <div className="mt-1 flex items-center gap-2 text-sm font-black text-[#15275e]"><span className="h-2.5 w-2.5 rounded-full bg-[#18b87b]" /> Production connected</div>
-                      </div>
 
                       <div className="absolute right-5 top-5 w-[205px] rounded-2xl border border-white/85 bg-white/95 p-4 shadow-2xl backdrop-blur-xl">
                         <div className="flex items-center gap-2"><Globe2 className="h-4 w-4 text-[#4D148C]" /><span className="text-[10px] font-black text-[#183066]">Route visibility</span></div>
@@ -290,7 +310,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 <div className="rounded-2xl border border-[#dfe5ef] bg-white p-5 shadow-[0_12px_35px_rgba(36,54,95,.07)]">
                   <div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.14em] text-[#4D148C]">Quick access</div><h2 className="mt-1 text-base font-black text-[#17285e]">Logistics workspace</h2></div><ShieldCheck className="h-5 w-5 text-[#4D148C]" /></div>
                   <div className="mt-5 space-y-2.5">
-                    {[['Ship without account', '/guest-shipping', Package], ['Shipping calculator', '/quote', Clock3], ['Customer communication', '/guest-support', Headphones], ['Admin control', '/admin', ShieldCheck]].map(([label, path, Icon]: any) => (
+                    {[['Ship without account', '/guest-shipping', Package], ['Shipping calculator', '/quote', Clock3], ['Customer communication', '/guest-support', Headphones]].map(([label, path, Icon]: any) => (
                       <button key={label} onClick={() => onNavigate(path)} className="flex w-full items-center gap-3 rounded-xl border border-[#e3e8f1] p-3 text-left hover:border-[#cfc0e8] hover:bg-[#faf8ff]">
                         <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#f0e8ff] text-[#4D148C]"><Icon className="h-4 w-4" /></span>
                         <span className="flex-1 text-xs font-black text-[#24345f]">{label}</span><ArrowRight className="h-4 w-4 text-[#8490a7]" />
