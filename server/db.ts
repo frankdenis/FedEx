@@ -10,6 +10,8 @@ const tableMap: Record<string,string> = {
   shipments: 'shipments',
   supportThreads: 'support_threads',
   supportMessages: 'support_messages',
+  guestShippingRequests: 'guest_shipping_requests',
+  siteSettings: 'site_settings',
 };
 
 const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
@@ -51,6 +53,13 @@ const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst c
   shipmentNumber: 'shipment_number',
   firstName: 'first_name',
   lastName: 'last_name',
+  requestNumber: 'request_number',
+  verificationStatus: 'verification_status',
+  verificationNotes: 'verification_notes',
+  selectedService: 'selected_service',
+  quotedCost: 'quoted_cost',
+  stripeSessionId: 'stripe_session_id',
+  paymentProof: 'payment_proof',
 };
 
 function tableName(name:string){ return tableMap[name] || name; }\nfunction keyColumn(name:string){ return keyMap[name] || 'id'; }
