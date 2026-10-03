@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { User, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Loader2, KeyRound } from 'lucide-react';
+import { User, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Loader2, KeyRound, Chrome } from 'lucide-react';
 import { Logo } from '../components/common/Logo';
 import { supabase } from '../lib/supabase';
 import { api } from '../lib/api';
@@ -39,7 +39,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({ mode, onNavigate }) => {
   const finishAuthentication = async () => {
     const profile = await api.me();
     const role = profile?.admin === true ? 'admin' : 'customer';
-    const user = (profile as any)?.profile;
+    const user = profile?.profile;
     setCurrentUser({
       id: profile.uid,
       firstName: user?.firstName || firstName.trim(),
@@ -52,6 +52,21 @@ export const AuthPages: React.FC<AuthPageProps> = ({ mode, onNavigate }) => {
       createdAt: user?.createdAt || new Date().toISOString(),
     });
     onNavigate(role === 'admin' ? '/admin' : '/dashboard');
+  };
+
+  const handleGoogle = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + '/login' },
+      });
+      if (authError) throw authError;
+    } catch (authError) {
+      setError(readableAuthError(authError));
+      setBusy(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -77,7 +92,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({ mode, onNavigate }) => {
         if (authError) throw authError;
         const { data: sessionData } = await supabase.auth.getSession();
         if (!sessionData.session) {
-          setMessage('Account created. Check your email to confirm your address before signing in.');
+          setMessage('Account created. Check your Gmail/email to confirm your address before signing in.');
           return;
         }
       }
@@ -111,30 +126,41 @@ export const AuthPages: React.FC<AuthPageProps> = ({ mode, onNavigate }) => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-160px)] flex items-center justify-center px-4 py-10 sm:py-16">
+    <div className="min-h-[calc(100vh-160px)] bg-[#f7f9ff] flex items-center justify-center px-4 py-10 sm:py-16">
       <div className="w-full max-w-md">
-        <div className="bg-white border border-slate-200 rounded-3xl shadow-xl p-6 sm:p-8">
+        <div className="overflow-hidden rounded-[28px] border border-[#dfe5f1] bg-white shadow-[0_30px_80px_rgba(38,40,85,.12)] p-6 sm:p-8">
           <div className="flex justify-center mb-7"><button type="button" onClick={() => onNavigate('/')}><Logo /></button></div>
           <div className="text-center mb-7">
             <div className="mx-auto mb-3 w-12 h-12 rounded-2xl bg-[#4D148C]/10 flex items-center justify-center">
               {isLogin ? <ShieldCheck className="w-6 h-6 text-[#4D148C]" /> : <User className="w-6 h-6 text-[#4D148C]" />}
             </div>
-            <h1 className="text-2xl font-extrabold text-slate-900">{isLogin ? 'Sign in to your account' : 'Create your account'}</h1>
-            <p className="text-sm text-slate-500 mt-2">{isLogin ? 'Use your registered credentials to access the customer portal.' : 'Create a real account protected by Supabase Auth.'}</p>
+            <h1 className="text-2xl font-black tracking-tight text-[#14265e]">{isLogin ? 'Welcome back' : 'Create your account'}</h1>
+            <p className="text-sm text-slate-500 mt-2">{isLogin ? 'Secure access to your customer logistics workspace.' : 'Use Google or your Gmail/email address to register.'}</p>
           </div>
+
           {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 flex gap-2"><AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{error}</span></div>}
           {message && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div>}
+
+          <button type="button" onClick={handleGoogle} disabled={busy} className="w-full rounded-xl border border-slate-300 bg-white py-3.5 font-extrabold text-sm text-slate-800 flex items-center justify-center gap-2 hover:bg-slate-50 disabled:opacity-60">
+            <Chrome className="w-5 h-5 text-[#4285F4]" /> Continue with Google
+          </button>
+
+          <div className="my-5 flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <span className="h-px flex-1 bg-slate-200" /> or <span className="h-px flex-1 bg-slate-200" />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && <div className="grid grid-cols-2 gap-3">
               <label className="block"><span className="text-xs font-bold text-slate-700">First name</span><input required value={firstName} onChange={e=>setFirstName(e.target.value)} autoComplete="given-name" className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 text-sm outline-none focus:border-[#4D148C] focus:ring-2 focus:ring-[#4D148C]/10" /></label>
               <label className="block"><span className="text-xs font-bold text-slate-700">Last name</span><input required value={lastName} onChange={e=>setLastName(e.target.value)} autoComplete="family-name" className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 text-sm outline-none focus:border-[#4D148C] focus:ring-2 focus:ring-[#4D148C]/10" /></label>
             </div>}
-            <label className="block"><span className="text-xs font-bold text-slate-700">Email address</span><div className="relative mt-1.5"><Mail className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" /><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 text-sm outline-none focus:border-[#4D148C] focus:ring-2 focus:ring-[#4D148C]/10" /></div></label>
+            <label className="block"><span className="text-xs font-bold text-slate-700">Gmail / email address</span><div className="relative mt-1.5"><Mail className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" /><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 text-sm outline-none focus:border-[#4D148C] focus:ring-2 focus:ring-[#4D148C]/10" /></div></label>
             <label className="block"><span className="text-xs font-bold text-slate-700">Password</span><div className="relative mt-1.5"><Lock className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" /><input required type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={8} autoComplete={isLogin?'current-password':'new-password'} className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 text-sm outline-none focus:border-[#4D148C] focus:ring-2 focus:ring-[#4D148C]/10" /></div></label>
-            <button type="submit" disabled={busy} className="w-full rounded-xl bg-[#4D148C] hover:bg-[#3c0f70] disabled:opacity-60 text-white py-3.5 font-bold text-sm flex items-center justify-center gap-2 transition-colors">
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}{isLogin ? 'Sign in' : 'Create account'}
+            <button type="submit" disabled={busy} className="w-full rounded-xl bg-gradient-to-r from-[#4D148C] to-[#7d22df] disabled:opacity-60 text-white py-3.5 font-bold text-sm flex items-center justify-center gap-2 transition-all">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}{isLogin ? 'Sign in securely' : 'Create account'}
             </button>
           </form>
+
           {isLogin && <button type="button" onClick={handleReset} disabled={busy} className="mt-4 w-full text-sm font-semibold text-slate-600 hover:text-[#4D148C] flex items-center justify-center gap-2"><KeyRound className="w-4 h-4" />Forgot password?</button>}
           <div className="mt-7 pt-6 border-t border-slate-100 text-center text-sm text-slate-500">{isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button type="button" onClick={()=>{setIsLogin(!isLogin);setError('');setMessage('');}} className="font-bold text-[#4D148C] hover:underline">{isLogin?'Create one':'Sign in'}</button>
