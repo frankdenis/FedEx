@@ -14,7 +14,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [guestRequests, setGuestRequests] = useState<any[]>([]);
   const [siteSettingsText, setSiteSettingsText] = useState('{}');
   const [siteSettings, setSiteSettings] = useState<any>({});
-  const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'messages'|'site'|'audit'>('overview');
+  const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'requests'|'messages'|'site'|'audit'>('overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,9 +24,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       const profile = await api.me();
       setMe(profile);
       if (!profile.admin) return;
-      const [s,u,r,l,t,ss] = await Promise.all([api.shipments(), api.adminUsers(), api.adminRates(), api.adminAuditLogs(), api.supportThreads(), api.adminSiteSettings()]);
+      const [s,u,r,l,t,g,ss] = await Promise.all([api.shipments(), api.adminUsers(), api.adminRates(), api.adminAuditLogs(), api.supportThreads(), api.adminGuestRequests(), api.adminSiteSettings()]);
       setShipments(Array.isArray(s) ? s : (s as any)?.shipments || []);
-      setUsers(u || []); setRates(r || []); setLogs(l || []); setThreads(t || []); setGuestRequests(g || []); setSiteSettingsText(JSON.stringify(settings || {}, null, 2)); setSiteSettings(ss || {});
+      setUsers(u || []); setRates(r || []); setLogs(l || []); setThreads(t || []); setGuestRequests(g || []); setSiteSettings(ss || {});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Admin data could not be loaded.');
     } finally { setBusy(false); }
@@ -78,7 +78,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
         {tab==='requests' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-[#17285e]">Guest shipping requests</h2><p className="mt-1 text-[11px] text-slate-500">Manual review decides whether a request passes verification. Payment status is independently confirmed by Stripe.</p></div><div className="divide-y divide-slate-100">{guestRequests.map(q=><div key={q.id} className="p-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div className="text-sm font-black text-slate-800">{q.requestNumber} · {q.firstName} {q.lastName}</div><div className="mt-1 text-[10px] text-slate-500">{q.email} · {q.phone} · {q.status} · verification: {q.verificationStatus}</div><div className="mt-1 text-[10px] font-bold text-[#4D148C]">{q.selectedService || 'Calculator pending'} {q.quotedCost ? '· '+q.currency+' '+q.quotedCost : ''} {q.paidAt ? '· Paid' : '· Unpaid'}</div></div><div className="flex gap-2"><button onClick={async()=>{await api.adminGuestDecision(q.id,'approve');await load();}} className="rounded-xl bg-emerald-600 px-3 py-2 text-[10px] font-black text-white">Approve</button><button onClick={async()=>{await api.adminGuestDecision(q.id,'decline');await load();}} className="rounded-xl bg-rose-600 px-3 py-2 text-[10px] font-black text-white">Decline</button></div></div></div>)}{!guestRequests.length&&<div className="p-10 text-center text-sm text-slate-500">No guest requests waiting for review.</div>}</div></section>}
 
-{tab==='settings' && <section className="rounded-3xl border border-[#dfe5ef] bg-white p-5 shadow-sm"><div className="flex items-center justify-between gap-4"><div><h2 className="font-black text-[#17285e]">Website control settings</h2><p className="mt-1 text-[11px] text-slate-500">The admin role can update the homepage configuration stored in Supabase. Keep values production-safe and JSON-valid.</p></div><button onClick={async()=>{try{const parsed=JSON.parse(siteSettingsText);await api.adminSaveSiteSettings(parsed);setError('');}catch(e){setError(e instanceof Error?e.message:'Invalid JSON or save failed.');}}} className="rounded-xl bg-[#4D148C] px-4 py-2.5 text-xs font-black text-white">Save settings</button></div><textarea value={siteSettingsText} onChange={e=>setSiteSettingsText(e.target.value)} className="mt-5 min-h-[360px] w-full rounded-2xl border border-slate-200 bg-[#0e1734] p-4 font-mono text-xs text-white outline-none focus:border-purple-400" spellCheck={false}/></section>}
+
 
 {tab==='messages' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm p-5"><div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black text-[#17285e]">Fast communication dashboard</h2></div><p className="mt-2 text-xs text-slate-500">Customer messages, payment references and shipment questions are routed through the secured support API. A payment reference is informational only; payment status is confirmed by Stripe webhooks.</p><div className="mt-5 space-y-3">{threads.map(t=><div key={t.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex justify-between gap-3"><div className="text-sm font-black">{t.subject}</div><div className="text-[9px] font-black uppercase text-[#4D148C]">{t.status}</div></div><div className="mt-1 text-[10px] text-slate-500">Priority {t.priority} · {t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</div></div>)}</div></section>}
 
