@@ -379,7 +379,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 </div>
                 <div className="mt-1 text-[9px] text-slate-400">Global network telemetry</div>
               </motion.div>
-            </div>
           </motion.div>
           </div>
 
