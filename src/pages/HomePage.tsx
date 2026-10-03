@@ -381,6 +381,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </motion.div>
             </div>
           </motion.div>
+          </div>
 
           <div className="relative z-40 -mt-1 mb-5 flex items-center justify-center gap-2">
             <button
