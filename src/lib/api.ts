@@ -32,6 +32,8 @@ export const api = {
   guestPaymentCheckout: (requestId:string,service:string,rateId:string,idempotencyKey=globalThis.crypto.randomUUID()) => request<any>('/api/guest/payments/checkout',{method:'POST',headers:{'Idempotency-Key':idempotencyKey},body:JSON.stringify({requestId,service,rateId})}),
   guestRequest: (id:string,email:string) => request<any>('/api/guest/requests/'+encodeURIComponent(id)+'?email='+encodeURIComponent(email)),
   guestMessage: (id:string,email:string,body:string,paymentReference?:string) => request<any>('/api/guest/requests/'+encodeURIComponent(id)+'/messages',{method:'POST',body:JSON.stringify({email,body,paymentReference})}),
+  adminSiteSettings: () => request<any>('/api/admin/site-settings'),
+  adminSaveSiteSettings: (input:any) => request<any>('/api/admin/site-settings',{method:'PUT',body:JSON.stringify(input)}),
   adminUsers: () => request<any[]>('/api/admin/users'),
   adminUpdateUserStatus: (userId: string, status: 'active' | 'suspended') => request('/api/admin/users/' + encodeURIComponent(userId) + '/status', { method: 'PATCH', body: JSON.stringify({ status }) }),
   adminRates: () => request<any[]>('/api/admin/rates'),
