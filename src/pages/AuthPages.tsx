@@ -48,7 +48,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({ mode, onNavigate }) => {
       phone: user?.phone || '',
       role,
       country: user?.country || '',
-      status: user?.status || 'active',
+      status: user?.status === 'suspended' ? 'suspended' : 'active',
       createdAt: user?.createdAt || new Date().toISOString(),
     });
     onNavigate(role === 'admin' ? '/admin' : '/dashboard');
