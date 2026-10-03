@@ -12,8 +12,6 @@ const tableMap: Record<string,string> = {
   supportMessages: 'support_messages',
   guestShippingRequests: 'guest_shipping_requests',
   siteSettings: 'site_settings',
-  guestShippingRequests: 'guest_shipping_requests',
-  siteSettings: 'site_settings',
 };
 
 const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
@@ -66,13 +64,6 @@ const columnMap: Record<string,string> = {
   lastMessageAt: 'last_message_at',
   updatedBy: 'updated_by',
   lastName: 'last_name',
-  requestNumber: 'request_number',
-  verificationStatus: 'verification_status',
-  verificationNotes: 'verification_notes',
-  selectedService: 'selected_service',
-  quotedCost: 'quoted_cost',
-  stripeSessionId: 'stripe_session_id',
-  paymentProof: 'payment_proof',
 };
 
 function tableName(name:string){ return tableMap[name] || name; }
@@ -128,7 +119,7 @@ class Query {
     if(this.max) q=q.limit(this.max);
     const {data,error}=await q;
     if(error) throw error;
-    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(this.name,row), new DocumentRef(this.name, String(row[keyColumn(this.name)]))))};
+    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(row), new DocumentRef(this.name, String(row[keyColumn(this.name)]))))};
   }
 }
 
@@ -143,7 +134,7 @@ class DocumentRef {
   async get(){
     const {data,error}=await supabaseAdmin.from(tableName(this.name)).select('*').eq(keyColumn(this.name),this.id).maybeSingle();
     if(error) throw error;
-    return new DocumentSnapshot(decodeRow(this.name,data), new DocumentRef(this.name, this.id));
+    return new DocumentSnapshot(decodeRow(data), new DocumentRef(this.name, this.id));
   }
   async set(value:any, options?:{merge?:boolean}){
     const payload=encodeObject(value);
