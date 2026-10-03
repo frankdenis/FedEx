@@ -73,6 +73,78 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     return () => window.clearInterval(timer);
   }, []);
 
+  const dashboardSlides = [
+    {
+      id: 'overview',
+      eyebrow: 'Operations overview',
+      title: 'Your World.',
+      accent: ' Our Priority.',
+      copy: 'A unified logistics workspace for shipment visibility, service access and global delivery coordination.',
+      panelTitle: 'Live shipment',
+      panelStatus: 'In transit',
+      origin: 'New York',
+      destination: 'London',
+      metricLabel: 'Network visibility',
+      metric: 'Live',
+      signal: 'Global network synchronized',
+    },
+    {
+      id: 'tracking',
+      eyebrow: 'Live tracking',
+      title: 'Know Where',
+      accent: ' It Is.',
+      copy: 'Follow every shipment through pickup, transit, delivery and the next operational milestone.',
+      panelTitle: 'Tracking workspace',
+      panelStatus: 'Monitoring',
+      origin: 'Origin scan',
+      destination: 'Destination',
+      metricLabel: 'Shipment status',
+      metric: 'Realtime',
+      signal: 'Tracking telemetry active',
+    },
+    {
+      id: 'shipping',
+      eyebrow: 'Shipment creation',
+      title: 'Ship With',
+      accent: ' Confidence.',
+      copy: 'Create shipments, review production rates and move securely into payment and fulfillment.',
+      panelTitle: 'Shipment workflow',
+      panelStatus: 'Ready',
+      origin: 'Collection',
+      destination: 'Delivery',
+      metricLabel: 'Workflow',
+      metric: 'Ready',
+      signal: 'Shipment workflow synchronized',
+    },
+    {
+      id: 'global',
+      eyebrow: 'Global network',
+      title: 'Move Across',
+      accent: ' Borders.',
+      copy: 'Connect international shipping services with a clear view of routes, destinations and delivery operations.',
+      panelTitle: 'Global movement',
+      panelStatus: 'Connected',
+      origin: 'Worldwide',
+      destination: 'Destination',
+      metricLabel: 'Network',
+      metric: '220+',
+      signal: 'Global route network active',
+    },
+  ];
+  const [dashboardSlide, setDashboardSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setDashboardSlide(current => (current + 1) % dashboardSlides.length);
+    }, 7000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const changeDashboardSlide = (next: number) => {
+    const normalized = (next + dashboardSlides.length) % dashboardSlides.length;
+    setDashboardSlide(normalized);
+  };
+
   return (
     <div className="space-y-16 sm:space-y-24">
     <section className="relative z-20 overflow-hidden rounded-b-[2rem] bg-slate-950">
@@ -129,24 +201,34 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
               className="relative z-20"
             >
-              <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#4D148C]">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF6600] opacity-60" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF6600]" />
-                </span>
-                Live logistics command center
-              </div>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={dashboardSlides[dashboardSlide].id}
+                  initial={{ opacity: 0, y: 14, filter: 'blur(5px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#4D148C]">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF6600] opacity-60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF6600]" />
+                    </span>
+                    {dashboardSlides[dashboardSlide].eyebrow}
+                  </div>
 
-              <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-black tracking-[-0.04em] leading-[1.02] font-display">
-                Move What
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#4D148C] via-[#7C3AED] to-[#FF6600]">
-                  Matters.
-                </span>
-              </h1>
+                  <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-black tracking-[-0.04em] leading-[1.02] font-display">
+                    {dashboardSlides[dashboardSlide].title}
+                    <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#4D148C] via-[#7C3AED] to-[#FF6600]">
+                      {dashboardSlides[dashboardSlide].accent}
+                    </span>
+                  </h1>
 
-              <p className="mt-5 max-w-xl text-sm sm:text-base lg:text-lg leading-7 text-slate-600">
-                A smarter shipping workspace for creating, tracking and managing international deliveries with a clear view of every movement.
-              </p>
+                  <p className="mt-5 max-w-xl text-sm sm:text-base lg:text-lg leading-7 text-slate-600">
+                    {dashboardSlides[dashboardSlide].copy}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
 
               <div className="mt-7 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl">
                 {[
@@ -190,7 +272,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </div>
             </motion.div>
 
-            <div className="relative min-h-[520px] sm:min-h-[590px] lg:min-h-[630px]">
+            <motion.div
+              key={dashboardSlides[dashboardSlide].id}
+              initial={{ opacity: 0.72, scale: 0.985 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              className="relative min-h-[520px] sm:min-h-[590px] lg:min-h-[630px]"
+            >
               {/* Professional logistics agent portrait */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 24 }}
@@ -230,9 +318,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-extrabold text-slate-900">
                     <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-[#4D148C]"><Box className="h-4 w-4" /></span>
-                    Live shipment
+                    {dashboardSlides[dashboardSlide].panelTitle}
                   </div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600">In transit</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600">{dashboardSlides[dashboardSlide].panelStatus}</span>
                 </div>
                 <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <motion.div
@@ -242,7 +330,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                   />
                 </div>
                 <div className="mt-3 flex justify-between text-[10px] font-semibold text-slate-500">
-                  <span>New York</span><span>London</span>
+                  <span>{dashboardSlides[dashboardSlide].origin}</span><span>{dashboardSlides[dashboardSlide].destination}</span>
                 </div>
               </motion.div>
 
@@ -254,7 +342,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 className="absolute left-0 top-40 z-30 w-[190px] sm:w-[215px] rounded-3xl border border-purple-100 bg-white/90 p-4 shadow-2xl backdrop-blur-xl"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Shipment flow</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{dashboardSlides[dashboardSlide].metricLabel}</span>
                   <Activity className="h-4 w-4 text-[#FF6600]" />
                 </div>
                 <div className="mt-2 flex items-end gap-2">
@@ -263,9 +351,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     animate={{ opacity: [0.72, 1, 0.72] }}
                     transition={{ duration: 2.4, repeat: Infinity }}
                   >
-                    84%
+                    {dashboardSlides[dashboardSlide].metric}
                   </motion.span>
-                  <span className="mb-1 text-[10px] font-bold text-emerald-600">network active</span>
+                  <span className="mb-1 text-[10px] font-bold text-emerald-600">active</span>
                 </div>
                 <div className="mt-3 flex h-12 items-end gap-1">
                   {[32, 48, 39, 67, 54, 78, 62, 88, 72, 96].map((height, index) => (
@@ -287,11 +375,41 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               >
                 <div className="flex items-center gap-2 text-[10px] font-bold">
                   <span className="relative flex h-2 w-2"><span className="absolute h-2 w-2 animate-ping rounded-full bg-[#FF6600]" /><span className="relative h-2 w-2 rounded-full bg-[#FF6600]" /></span>
-                  Route signal synchronized
+                  {dashboardSlides[dashboardSlide].signal}
                 </div>
                 <div className="mt-1 text-[9px] text-slate-400">Global network telemetry</div>
               </motion.div>
             </div>
+          </motion.div>
+
+          <div className="relative z-40 -mt-1 mb-5 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous dashboard view"
+              onClick={() => changeDashboardSlide(dashboardSlide - 1)}
+              className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-[#4D148C] hover:text-[#4D148C]"
+            >
+              <ChevronRight className="h-4 w-4 rotate-180" />
+            </button>
+            <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-2 shadow-sm">
+              {dashboardSlides.map((slide, index) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  aria-label={`Show dashboard view ${index + 1}`}
+                  onClick={() => changeDashboardSlide(index)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${index === dashboardSlide ? 'w-8 bg-[#4D148C]' : 'w-3 bg-slate-200 hover:bg-slate-300'}`}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              aria-label="Next dashboard view"
+              onClick={() => changeDashboardSlide(dashboardSlide + 1)}
+              className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-[#4D148C] hover:text-[#4D148C]"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
 
           {/* Live tracking strip */}
