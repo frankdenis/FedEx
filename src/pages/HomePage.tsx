@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   Activity, ArrowRight, Bell, Box, BriefcaseBusiness, CheckCircle2, ChevronDown,
   ChevronLeft, ChevronRight, CircleHelp, Clock3, Globe2, Headphones, Layers3,
-  MapPin, Package, Plane, Search, ShieldCheck, UserRound, Menu, X
+  MapPin, Package, Plane, Search, ShieldCheck, Sparkles, UserRound, Menu, X
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { LOGISTICS_IMAGES } from '../data/siteContent';
