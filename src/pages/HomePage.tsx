@@ -41,7 +41,7 @@ const nav = [
 const slides = [
   {
     id: "network",
-    eyebrow: "Global logistics command center",
+    eyebrow: "Premium shipping workspace",
     title: "Your World",
     accent: "Our Priority",
     copy: "A clear workspace for shipping, tracking and managing deliveries across your global network.",
