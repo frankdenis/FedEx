@@ -23,6 +23,7 @@ import {
   markAllNotificationsAsRead,
 } from '../../lib/store';
 import { User as UserType } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface NavbarProps {
   currentPath: string;
@@ -77,7 +78,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     { name: 'Support', path: '/support' },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
     setUserDropdownOpen(false);
     onNavigate('/login');
