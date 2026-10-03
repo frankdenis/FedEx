@@ -74,13 +74,17 @@ Do not commit credentials. Leave FedEx service mappings unset until they are ver
 ## Payment flow
 
 1. An authenticated customer creates a shipment with payment pending.
-2. The API creates a Stripe Checkout Session using the server-stored shipment amount.
-3. The browser is redirected to Stripe.
-4. Stripe calls POST /api/payments/webhook.
-5. The server verifies the Stripe signature.
-6. Only a verified successful Checkout event changes the shipment to Paid.
-7. The webhook enqueues carrier work instead of waiting for FedEx shipment creation.
-8. Duplicate Stripe events do not create duplicate application shipments.
+2. The API creates a hosted Stripe Checkout Session using the server-stored shipment amount and an idempotent request key.
+3. The Checkout Session includes a per-session `integration_identifier` for Stripe Dashboard flow identification.
+4. The browser is redirected to Stripe.
+5. Stripe calls POST /api/payments/webhook.
+6. The server verifies the Stripe signature.
+7. The webhook handles both completed and asynchronous-success events.
+8. Only a verified paid Checkout Session changes the shipment to Paid.
+9. The webhook handles both `checkout.session.completed` and `checkout.session.async_payment_succeeded`, and only fulfills sessions whose `payment_status` is `paid`.
+8. Stripe event claims are atomic in Supabase, with a short processing lease so concurrent webhook deliveries cannot double-fulfill a shipment.
+9. Failed webhook processing is marked retryable; the event is only marked processed after shipment payment state and carrier-job enqueue succeed.
+10. Duplicate Stripe events do not create duplicate application shipments or duplicate carrier work.
 
 ## Carrier job processing
 
