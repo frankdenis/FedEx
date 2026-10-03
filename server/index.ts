@@ -485,6 +485,27 @@ app.put('/api/admin/site-settings', requireAuth, requireAdmin, async (req,res)=>
   return res.json(value);
 });
 
+app.get('/api/admin/guest-requests', requireAuth, requireAdmin, async (_req,res)=>{
+  const rows=await db.collection('guestShippingRequests').orderBy('createdAt','desc').limit(200).get();
+  return res.json(rows.docs.map((doc:any)=>doc.data()));
+});
+
+app.post('/api/admin/guest-requests/:requestId/decision', requireAuth, requireAdmin, async (req,res)=>{
+  const id=req.params.requestId.trim(), decision=req.body?.decision;
+  if(!['approve','decline'].includes(decision)) return res.status(400).json({error:'Decision must be approve or decline.'});
+  const ref=db.collection('guestShippingRequests').doc(id), snapshot=await ref.get();
+  if(!snapshot.exists) return res.status(404).json({error:'Guest request not found.'});
+  const request=snapshot.data()!;
+  const now=new Date().toISOString();
+  if(decision==='approve'){
+    await ref.update({status:'approved',verificationStatus:'passed',verificationNotes:String(req.body?.note||'Approved by operations after manual review.'),updatedAt:now,messages:FieldValue.arrayUnion({id:randomUUID(),sender:'Operations',body:String(req.body?.note||'Your request has been approved after manual review.'),timestamp:now})});
+  }else{
+    await ref.update({status:'declined',verificationStatus:'failed',verificationNotes:String(req.body?.note||'Request declined after manual review.'),updatedAt:now,messages:FieldValue.arrayUnion({id:randomUUID(),sender:'Operations',body:String(req.body?.note||'Your request was declined after manual review.'),timestamp:now})});
+  }
+  await db.collection('auditLogs').add({actorUid:req.user!.uid,actorEmail:req.user!.email,action:'guest_request.reviewed',details:id+':'+decision,shipmentNumber:request.requestNumber,timestamp:FieldValue.serverTimestamp()});
+  return res.json({ok:true,status:decision==='approve'?'approved':'declined'});
+});
+
 app.get('/api/admin/users', requireAuth, requireAdmin, async (_req, res) => {
   const rows = await db.collection('users').orderBy('createdAt', 'desc').limit(200).get();
   return res.json(rows.docs.map((doc: any) => doc.data()));
