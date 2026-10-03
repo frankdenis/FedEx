@@ -11,7 +11,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [rates, setRates] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [threads, setThreads] = useState<any[]>([]);
-  const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'messages'|'audit'>('overview');
+  const [siteSettings, setSiteSettings] = useState<any>({});
+  const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'messages'|'site'|'audit'>('overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,9 +22,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
       const profile = await api.me();
       setMe(profile);
       if (!profile.admin) return;
-      const [s,u,r,l,t] = await Promise.all([api.shipments(), api.adminUsers(), api.adminRates(), api.adminAuditLogs(), api.supportThreads()]);
+      const [s,u,r,l,t,ss] = await Promise.all([api.shipments(), api.adminUsers(), api.adminRates(), api.adminAuditLogs(), api.supportThreads(), api.adminSiteSettings()]);
       setShipments(Array.isArray(s) ? s : (s as any)?.shipments || []);
-      setUsers(u || []); setRates(r || []); setLogs(l || []); setThreads(t || []);
+      setUsers(u || []); setRates(r || []); setLogs(l || []); setThreads(t || []); setSiteSettings(ss || {});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Admin data could not be loaded.');
     } finally { setBusy(false); }
@@ -34,6 +35,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const paid = useMemo(() => shipments.filter(s => String(s.paymentStatus).toLowerCase() === 'paid').length, [shipments]);
   const pending = useMemo(() => shipments.filter(s => String(s.paymentStatus).toLowerCase() !== 'paid').length, [shipments]);
   const activeRates = rates.filter(r => r.active).length;
+  const saveSiteSettings = async () => { setBusy(true); setError(''); try { await api.adminSaveSiteSettings(siteSettings); } catch (e) { setError(e instanceof Error ? e.message : 'Homepage settings could not be saved.'); } finally { setBusy(false); } };
 
   if (me && !me.admin) {
     return <div className="min-h-[70vh] grid place-items-center px-5"><div className="max-w-md rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl"><XCircle className="mx-auto h-10 w-10 text-rose-500"/><h1 className="mt-4 text-2xl font-black text-slate-900">Administrator access required</h1><p className="mt-2 text-sm text-slate-500">This control center is restricted to accounts with the admin role in Supabase.</p><button onClick={()=>onNavigate('/')} className="mt-6 rounded-xl bg-[#4D148C] px-5 py-3 text-sm font-bold text-white">Return home</button></div></div>;
@@ -58,7 +60,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
         </div>
 
         <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[#dfe5ef] bg-white p-2 shadow-sm">
-          {(['overview','shipments','users','rates','messages','audit'] as const).map(item => <button key={item} onClick={()=>setTab(item)} className={'whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black capitalize transition '+(tab===item?'bg-[#4D148C] text-white':'text-slate-600 hover:bg-slate-100')}>{item}</button>)}
+          {(['overview','shipments','users','rates','messages','site','audit'] as const).map(item => <button key={item} onClick={()=>setTab(item)} className={'whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black capitalize transition '+(tab===item?'bg-[#4D148C] text-white':'text-slate-600 hover:bg-slate-100')}>{item}</button>)}
         </div>
 
         {tab==='overview' && <div className="grid gap-5 lg:grid-cols-2">
@@ -73,6 +75,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
         {tab==='rates' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-[#17285e]">Production shipping rates</h2><p className="mt-1 text-[11px] text-slate-500">Rates here are used by the server-side quote engine. No browser-side pricing is trusted.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-xs"><thead className="bg-slate-50 text-[9px] font-black uppercase text-slate-500"><tr><th className="p-4">Service</th><th className="p-4">Route</th><th className="p-4">Base</th><th className="p-4">Per kg</th><th className="p-4">Window</th><th className="p-4">State</th><th className="p-4">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{rates.map(r=><tr key={r.id}><td className="p-4 font-black">{r.service}</td><td className="p-4">{r.originCountry} → {r.destCountry}</td><td className="p-4">{r.currency} {r.baseRate}</td><td className="p-4">{r.perKgRate}</td><td className="p-4">{r.estDaysMin}–{r.estDaysMax} days</td><td className="p-4">{r.active?'Active':'Disabled'}</td><td className="p-4"><button disabled={!r.active} onClick={async()=>{await api.adminDisableRate(r.id);await load();}} className="rounded-lg bg-rose-50 px-3 py-2 text-[10px] font-black text-rose-700 disabled:opacity-40">Disable</button></td></tr>)}</tbody></table></div></section>}
 
         {tab==='messages' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm p-5"><div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black text-[#17285e]">Fast communication dashboard</h2></div><p className="mt-2 text-xs text-slate-500">Customer messages, payment references and shipment questions are routed through the secured support API. A payment reference is informational only; payment status is confirmed by Stripe webhooks.</p><div className="mt-5 space-y-3">{threads.map(t=><div key={t.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex justify-between gap-3"><div className="text-sm font-black">{t.subject}</div><div className="text-[9px] font-black uppercase text-[#4D148C]">{t.status}</div></div><div className="mt-1 text-[10px] text-slate-500">Priority {t.priority} · {t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</div></div>)}</div></section>}
+
+        {tab==='site' && <section className="rounded-3xl border border-[#dfe5ef] bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#4D148C]"/><div><h2 className="font-black text-[#17285e]">Website presentation controls</h2><p className="text-xs font-semibold text-slate-500">Changes here appear on the public homepage.</p></div></div>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <label className="text-xs font-black">Headline<input value={siteSettings.headline||''} onChange={e=>setSiteSettings((v:any)=>({...v,headline:e.target.value}))} className="mt-1.5 w-full rounded-xl border border-[#d9e1ed] px-3 py-3"/></label>
+            <label className="text-xs font-black">Accent<input value={siteSettings.accent||''} onChange={e=>setSiteSettings((v:any)=>({...v,accent:e.target.value}))} className="mt-1.5 w-full rounded-xl border border-[#d9e1ed] px-3 py-3"/></label>
+            <label className="md:col-span-2 text-xs font-black">Supporting copy<textarea value={siteSettings.copy||''} onChange={e=>setSiteSettings((v:any)=>({...v,copy:e.target.value}))} className="mt-1.5 min-h-24 w-full rounded-xl border border-[#d9e1ed] px-3 py-3"/></label>
+            <label className="md:col-span-2 text-xs font-black">Hero photo URL<input value={siteSettings.heroImage||''} onChange={e=>setSiteSettings((v:any)=>({...v,heroImage:e.target.value}))} className="mt-1.5 w-full rounded-xl border border-[#d9e1ed] px-3 py-3"/></label>
+          </div>
+          <button onClick={saveSiteSettings} disabled={busy} className="mt-5 rounded-xl bg-[#4D148C] px-5 py-3 text-sm font-black text-white">{busy?'Saving…':'Save homepage controls'}</button>
+        </section>}
 
         {tab==='audit' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm overflow-hidden"><div className="border-b border-slate-100 p-5"><h2 className="font-black text-[#17285e]">Audit activity</h2></div><div className="divide-y divide-slate-100">{logs.map(l=><div key={l.id} className="p-4"><div className="text-xs font-black text-slate-800">{l.action}</div><div className="mt-1 text-[10px] text-slate-500">{l.actorEmail || l.actorUid || 'System'} · {l.details || l.shipmentNumber || l.paymentReference || ''}</div></div>)}</div></section>}
       </div>

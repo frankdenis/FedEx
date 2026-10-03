@@ -19,6 +19,8 @@ import { AuthPages } from './pages/AuthPages';
 import { FleetEquipmentPage } from './pages/FleetEquipmentPage';
 import { GoogleChatPage } from './pages/GoogleChatPage';
 import { GoogleDrivePage } from './pages/GoogleDrivePage';
+import { GuestShippingPage } from './pages/GuestShippingPage';
+import { GuestCommunicationPage } from './pages/GuestCommunicationPage';
 
 import { MessageSquare } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -74,7 +76,7 @@ export default function App() {
     }
 
     if (currentPath.startsWith('/quote')) {
-      return <QuoteCalculatorPage onNavigate={navigate} />;
+      return <QuoteCalculatorPage onNavigate={navigate} initialRequestId={getQueryParam('request') || undefined} />;
     }
 
     if (currentPath.startsWith('/services')) {
@@ -94,6 +96,10 @@ export default function App() {
       return <ResourcesGuidesPage onNavigate={navigate} />;
     }
 
+    if (currentPath.startsWith('/guest-shipping')) {
+      return <GuestShippingPage onNavigate={navigate} />;
+    }
+
     if (currentPath.startsWith('/dashboard')) {
       return <CustomerDashboardPage onNavigate={navigate} />;
     }
@@ -108,6 +114,10 @@ export default function App() {
 
     if (currentPath.startsWith('/drive') || currentPath.startsWith('/documents')) {
       return <GoogleDrivePage onNavigate={navigate} />;
+    }
+
+    if (currentPath.startsWith('/guest-support')) {
+      return <GuestCommunicationPage onNavigate={navigate} />;
     }
 
     if (currentPath.startsWith('/support')) {

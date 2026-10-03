@@ -100,31 +100,39 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
 }
 
 async function processSuccessfulCheckout(session: Stripe.Checkout.Session): Promise<void> {
+  if (session.payment_status !== 'paid') return;
+  const guestRequestId = session.metadata?.guestRequestId;
+  if (guestRequestId) {
+    const ref = db.collection('guestShippingRequests').doc(guestRequestId);
+    const snapshot = await ref.get();
+    if (!snapshot.exists) return;
+    const request = snapshot.data()!;
+    await ref.update({
+      status: 'paid_pending_review',
+      paymentReference: session.payment_intent || session.id,
+      stripeSessionId: session.id,
+      paidAt: new Date().toISOString(),
+      updatedAt: FieldValue.serverTimestamp(),
+      messages: FieldValue.arrayUnion({
+        id: randomUUID(),
+        sender: 'System',
+        body: 'Payment confirmed. Your request is now waiting for operational review.',
+        timestamp: new Date().toISOString(),
+      }),
+    });
+    await db.collection('auditLogs').add({action:'guest_payment.completed',paymentReference:session.payment_intent || session.id,details:request.requestNumber || guestRequestId,timestamp:FieldValue.serverTimestamp()});
+    return;
+  }
   const shipmentId = session.metadata?.shipmentId;
-  if (!shipmentId || session.payment_status !== 'paid') return;
-
+  if (!shipmentId) return;
   const shipmentRef = db.collection('shipments').doc(shipmentId);
   const shipmentSnapshot = await shipmentRef.get();
   if (!shipmentSnapshot.exists) return;
-
   const shipment = shipmentSnapshot.data()!;
   if (shipment.paymentStatus !== 'Paid') {
-    await shipmentRef.update({
-      paymentStatus: 'Paid',
-      paymentProvider: 'stripe',
-      paymentReference: session.payment_intent || session.id,
-      paidAt: new Date().toISOString(),
-      status: 'Payment Confirmed',
-    });
-
-    await db.collection('auditLogs').add({
-      action: 'payment.completed',
-      shipmentId,
-      paymentReference: session.payment_intent || session.id,
-      timestamp: FieldValue.serverTimestamp(),
-    });
+    await shipmentRef.update({paymentStatus:'Paid',paymentProvider:'stripe',paymentReference:session.payment_intent || session.id,paidAt:new Date().toISOString(),status:'Payment Confirmed'});
+    await db.collection('auditLogs').add({action:'payment.completed',shipmentId,paymentReference:session.payment_intent || session.id,timestamp:FieldValue.serverTimestamp()});
   }
-
   await enqueueCarrierJob(shipmentId);
 }
 
@@ -167,6 +175,68 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
 });
 
 app.use(express.json({ limit: '1mb' }));
+
+app.get('/api/site-settings', async (_req,res)=>{
+  const snapshot=await db.collection('siteSettings').doc('homepage').get();
+  return res.json(snapshot.exists ? snapshot.data()?.value || {} : {});
+});
+
+app.post('/api/guest/requests', async (req,res)=>{
+  try{
+    const c=req.body?.customer||{}, sender=req.body?.sender||{}, recipient=req.body?.recipient||{}, packageInfo=req.body?.packageInfo||{};
+    const email=String(c.email||'').trim().toLowerCase();
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return res.status(400).json({error:'A valid email address is required.'});
+    if(!String(c.firstName||'').trim()||!String(c.lastName||'').trim()||!String(c.phone||'').trim()) return res.status(400).json({error:'Name and phone are required.'});
+    assertAddress(sender,'sender'); assertAddress(recipient,'recipient'); assertPackage(packageInfo);
+    const id=randomUUID(), requestNumber='REQ-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+id.replace(/-/g,'').slice(0,8).toUpperCase(), now=new Date().toISOString();
+    await db.collection('guestShippingRequests').doc(id).set({id,requestNumber,status:'details_submitted',verificationStatus:'pending',verificationNotes:'Required fields passed validation; identity authenticity requires operational review.',firstName:String(c.firstName).trim(),lastName:String(c.lastName).trim(),email,phone:String(c.phone).trim(),sender,recipient,packageInfo,messages:[{id:randomUUID(),sender:'System',body:'Request received. Continue to the live shipping calculator.',timestamp:now}],createdAt:now,updatedAt:now});
+    return res.status(201).json({id,requestNumber,status:'details_submitted'});
+  }catch(e){return res.status(400).json({error:e instanceof Error?e.message:'Invalid shipping request.'})}
+});
+
+app.get('/api/guest/requests/:id', async (req,res)=>{
+  const email=String(req.query.email||'').trim().toLowerCase(); const snapshot=await db.collection('guestShippingRequests').doc(req.params.id.trim()).get();
+  if(!snapshot.exists||!email||String(snapshot.data()?.email||'').toLowerCase()!==email) return res.status(404).json({error:'Request not found.'});
+  const d=snapshot.data()!; return res.json({id:req.params.id,requestNumber:d.requestNumber,status:d.status,verificationStatus:d.verificationStatus,paymentStatus:d.paidAt?'Paid':'Pending',messages:d.messages||[],quotedCost:d.quotedCost||null,currency:d.currency||null});
+});
+
+app.post('/api/guest/requests/:id/messages', async (req,res)=>{
+  const email=String(req.body?.email||'').trim().toLowerCase(); const ref=db.collection('guestShippingRequests').doc(req.params.id.trim()); const snapshot=await ref.get();
+  if(!snapshot.exists||!email||String(snapshot.data()?.email||'').toLowerCase()!==email) return res.status(404).json({error:'Request not found.'});
+  const body=String(req.body?.body||'').trim(), paymentReference=String(req.body?.paymentReference||'').trim();
+  if(!body&&!paymentReference) return res.status(400).json({error:'Message or payment reference is required.'});
+  await ref.update({messages:FieldValue.arrayUnion({id:randomUUID(),sender:'Customer',body:body||'Payment proof reference submitted.',paymentReference:paymentReference||null,timestamp:new Date().toISOString()}),updatedAt:FieldValue.serverTimestamp()});
+  return res.json({ok:true});
+});
+
+app.post('/api/guest/quotes', async (req,res)=>{
+  try{
+    assertService(req.body.service);
+    if(typeof req.body.weightKg!=='number'||req.body.weightKg<=0) throw new Error('weightKg must be greater than zero.');
+    const rates=await db.collection('shippingRates').where('service','==',req.body.service).where('originCountry','==',req.body.originCountry).where('destCountry','==',req.body.destCountry).where('active','==',true).limit(1).get();
+    if(rates.empty) return res.status(503).json({error:'No configured production rate is available for this route.'});
+    const rate=rates.docs[0].data(), price=Math.round((Number(rate.baseRate)+Number(rate.perKgRate)*req.body.weightKg)*100)/100;
+    return res.json({price,estDaysMin:Number(rate.estDaysMin),estDaysMax:Number(rate.estDaysMax),currency:rate.currency||'USD',rateId:rates.docs[0].id});
+  }catch(e){return res.status(400).json({error:e instanceof Error?e.message:'Invalid quote request.'})}
+});
+
+app.post('/api/guest/payments/checkout', async (req,res)=>{
+  if(!stripe) return res.status(503).json({error:'Payment provider is not configured.'});
+  const requestId=String(req.body?.requestId||''), service=String(req.body?.service||''), rateId=String(req.body?.rateId||''), idempotencyKey=req.header('Idempotency-Key');
+  if(!requestId||!service||!rateId) return res.status(400).json({error:'requestId, service and rateId are required.'});
+  if(!idempotencyKey||!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return res.status(400).json({error:'A valid Idempotency-Key is required.'});
+  if(!appBaseUrl) return res.status(503).json({error:'Application base URL is not configured.'});
+  const ref=db.collection('guestShippingRequests').doc(requestId), snap=await ref.get();
+  if(!snap.exists) return res.status(404).json({error:'Request not found.'});
+  const request=snap.data()!;
+  if(!['details_submitted','awaiting_payment'].includes(String(request.status))) return res.status(409).json({error:'Request is not awaiting payment.'});
+  const rateSnap=await db.collection('shippingRates').doc(rateId).get();
+  if(!rateSnap.exists||rateSnap.data()?.service!==service||rateSnap.data()?.active!==true) return res.status(400).json({error:'Selected production rate is unavailable.'});
+  const rate=rateSnap.data()!, weight=Number(request.packageInfo?.weight||0), amount=Math.round((Number(rate.baseRate)+Number(rate.perKgRate)*weight)*100)/100, currency=String(rate.currency||'USD').toLowerCase();
+  const session=await stripe.checkout.sessions.create({mode:'payment',success_url:appBaseUrl+'/support?guest='+encodeURIComponent(requestId)+'&payment=success',cancel_url:appBaseUrl+'/quote?request='+encodeURIComponent(requestId),customer_email:request.email,client_reference_id:requestId,metadata:{guestRequestId:requestId,requestNumber:request.requestNumber},integration_identifier:'fedex-guest-'+randomUUID().replace(/-/g,'').slice(0,8),line_items:[{quantity:1,price_data:{currency,unit_amount:Math.round(amount*100),product_data:{name:'Guest shipping '+request.requestNumber+' · '+service}}}]},{idempotencyKey});
+  await ref.update({status:'awaiting_payment',selectedService:service,quotedCost:amount,currency:String(rate.currency||'USD').toUpperCase(),rateId,stripeSessionId:session.id,updatedAt:FieldValue.serverTimestamp()});
+  return res.json({checkoutUrl:session.url,sessionId:session.id});
+});
 
 app.post('/api/internal/carrier-jobs/process', async (req, res) => {
   const secret = process.env.CARRIER_WORKER_SECRET;
@@ -404,6 +474,17 @@ app.post('/api/shipments/:trackingNumber/events', requireAuth, requireAdmin, asy
 });
 
 
+app.get('/api/admin/site-settings', requireAuth, requireAdmin, async (_req,res)=>{
+  const snapshot=await db.collection('siteSettings').doc('homepage').get();
+  return res.json(snapshot.exists ? snapshot.data()?.value || {} : {});
+});
+app.put('/api/admin/site-settings', requireAuth, requireAdmin, async (req,res)=>{
+  const value=req.body||{}, ref=db.collection('siteSettings').doc('homepage');
+  await ref.set({id:'homepage',value,updatedAt:new Date().toISOString(),updatedBy:req.user!.uid},{merge:true});
+  await db.collection('auditLogs').add({actorUid:req.user!.uid,actorEmail:req.user!.email,action:'site_settings.updated',details:'homepage',timestamp:FieldValue.serverTimestamp()});
+  return res.json(value);
+});
+
 app.get('/api/admin/users', requireAuth, requireAdmin, async (_req, res) => {
   const rows = await db.collection('users').orderBy('createdAt', 'desc').limit(200).get();
   return res.json(rows.docs.map((doc: any) => doc.data()));
@@ -507,6 +588,5 @@ app.post('/api/support/threads/:threadId/messages', requireAuth, async (req, res
   await db.collection('supportThreads').doc(id).update({ updatedAt: now, lastMessageAt: now, status: req.user!.admin ? 'in_progress' : 'open' });
   return res.status(201).json({ id: messageId });
 });
-
-app.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));
+\napp.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));
 app.listen(port, () => console.log('FedEx logistics API listening on port ' + port));
