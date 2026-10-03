@@ -1,0 +1,12 @@
+{
+  "name": "FedEx Global Logistics",
+  "short_name": "FedEx Logistics",
+  "description": "Global shipping, tracking and logistics platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#4D148C",
+  "scope": "/",
+  "lang": "en"
+}
