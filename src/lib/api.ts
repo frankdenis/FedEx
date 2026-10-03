@@ -19,6 +19,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  siteSettings: () => request<any>('/api/site-settings'),
   health: () => request<{ ok: boolean; service: string; version: string }>('/api/health'),
   me: () => request<{ uid: string; email: string; admin: boolean; profile: { firstName?: string; lastName?: string; phone?: string; country?: string; status?: string; createdAt?: string } | null }>('/api/me'),
   shipments: () => request('/api/shipments'),
