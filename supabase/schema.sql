@@ -106,6 +106,9 @@ create index if not exists shipments_tracking_idx on public.shipments(tracking_n
 create index if not exists shipping_rates_lookup_idx on public.shipping_rates(service, origin_country, dest_country, active);
 create index if not exists carrier_jobs_status_idx on public.carrier_jobs(status, queued_at);
 create index if not exists audit_logs_shipment_idx on public.audit_logs(shipment_id, timestamp desc);
+create index if not exists idempotency_keys_owner_uid_idx on public.idempotency_keys(owner_uid);
+create index if not exists idempotency_keys_shipment_id_idx on public.idempotency_keys(shipment_id);
+create index if not exists shipments_rate_id_idx on public.shipments(rate_id);
 
 alter table public.profiles enable row level security;
 alter table public.shipping_rates enable row level security;
@@ -128,6 +131,7 @@ create or replace function public.claim_carrier_job(p_shipment_id uuid)
 returns boolean
 language plpgsql
 security invoker
+set search_path = public
 as $$
 declare claimed boolean;
 begin
@@ -146,6 +150,7 @@ create or replace function public.enqueue_carrier_job(p_shipment_id uuid)
 returns void
 language plpgsql
 security invoker
+set search_path = public
 as $$
 begin
   insert into public.carrier_jobs (shipment_id, status, attempts, queued_at, updated_at)
@@ -164,6 +169,7 @@ create or replace function public.create_shipment_idempotent(
 returns jsonb
 language plpgsql
 security invoker
+set search_path = public
 as $$
 declare existing_response jsonb;
 declare new_id uuid;
@@ -204,6 +210,7 @@ create or replace function public.claim_carrier_shipment(p_shipment_id uuid)
 returns jsonb
 language plpgsql
 security invoker
+set search_path = public
 as $$
 declare s public.shipments%rowtype;
 declare request_id text;
@@ -224,10 +231,10 @@ begin
 end;
 $$;
 
-revoke all on public.claim_carrier_job(uuid) from public, anon, authenticated;
-revoke all on public.enqueue_carrier_job(uuid) from public, anon, authenticated;
-revoke all on public.create_shipment_idempotent(text,uuid,jsonb) from public, anon, authenticated;
-revoke all on public.claim_carrier_shipment(uuid) from public, anon, authenticated;
+revoke all on function public.claim_carrier_job(uuid) from public, anon, authenticated;
+revoke all on function public.enqueue_carrier_job(uuid) from public, anon, authenticated;
+revoke all on function public.create_shipment_idempotent(text,uuid,jsonb) from public, anon, authenticated;
+revoke all on function public.claim_carrier_shipment(uuid) from public, anon, authenticated;
 
 
 create or replace function public.handle_new_user()
