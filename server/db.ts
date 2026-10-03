@@ -10,11 +10,11 @@ const tableMap: Record<string,string> = {
   shipments: 'shipments',
   supportThreads: 'support_threads',
   supportMessages: 'support_messages',
+  guestShippingRequests: 'guest_shipping_requests',
+  siteSettings: 'site_settings',
 };
 
-const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
-
-const columnMap: Record<string,string> = {
+const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
   ownerUid: 'owner_uid',
   userId: 'user_id',
   threadId: 'thread_id',
@@ -53,10 +53,16 @@ const columnMap: Record<string,string> = {
   shipmentNumber: 'shipment_number',
   firstName: 'first_name',
   lastName: 'last_name',
+  requestNumber: 'request_number',
+  verificationStatus: 'verification_status',
+  verificationNotes: 'verification_notes',
+  selectedService: 'selected_service',
+  quotedCost: 'quoted_cost',
+  stripeSessionId: 'stripe_session_id',
+  paymentProof: 'payment_proof',
 };
 
-function tableName(name:string){ return tableMap[name] || name; }
-function keyColumn(name:string){ return keyMap[name] || 'id'; }
+function tableName(name:string){ return tableMap[name] || name; }\nfunction keyColumn(name:string){ return keyMap[name] || 'id'; }
 function col(name:string){ return columnMap[name] || name; }
 
 function encodeValue(value:any):any {
@@ -76,9 +82,9 @@ function encodeObject(input:any){
   return out;
 }
 
-function decodeRow(name:string,row:any):any {
+function decodeRow(row:any):any {
   if(!row) return null;
-  const out:any={id:row[keyColumn(name)]};
+  const out:any={id:row.id};
   for(const [k,v] of Object.entries(row)){
     const camel = Object.entries(columnMap).find(([,db])=>db===k)?.[0] || k;
     out[camel]=v;
