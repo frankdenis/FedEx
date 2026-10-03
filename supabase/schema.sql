@@ -143,13 +143,13 @@ create index if not exists guest_requests_email_idx on public.guest_shipping_req
 create index if not exists guest_requests_status_idx on public.guest_shipping_requests(status, created_at desc);
 
 create table if not exists public.site_settings (
-  key text primary key,
+  id text primary key,
   value jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id) on delete set null
 );
 
-insert into public.site_settings(key,value)
+insert into public.site_settings(id,value)
 values
 ('homepage', jsonb_build_object(
   'headline','Your World',
@@ -157,7 +157,7 @@ values
   'copy','A brighter command center for shipping, tracking and delivery coordination across your network.',
   'heroImage','https://images.pexels.com/photos/6169659/pexels-photo-6169659.jpeg?cs=srgb&dl=pexels-tima-miroshnichenko-6169659.jpg&fm=jpg'
 ))
-on conflict (key) do nothing;
+on conflict (id) do nothing;
 
 alter table public.guest_shipping_requests enable row level security;
 alter table public.site_settings enable row level security;
