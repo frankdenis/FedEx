@@ -52,10 +52,7 @@ const columnMap: Record<string,string> = {
   selectedService: 'selected_service',
   quotedCost: 'quoted_cost',
   stripeSessionId: 'stripe_session_id',
-  paymentReference: 'payment_reference',
   paymentProof: 'payment_proof',
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
 };
 
 function tableName(name:string){ return tableMap[name] || name; }
