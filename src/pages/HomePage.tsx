@@ -22,9 +22,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { LOGISTICS_IMAGES } from '../data/siteContent';
-import { FEDEX_EQUIPMENT_FLEET } from '../data/equipmentData';
 import { Logo } from '../components/common/Logo';
-import { EquipmentShowcase } from '../components/equipment/EquipmentShowcase';
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
@@ -128,130 +126,221 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     </div>
 
 
-      {/* HERO SECTION */}
-      <section className="relative min-h-[660px] lg:min-h-[760px] flex items-center justify-center overflow-hidden bg-[#0A0414] text-white">
-        {/* Full-width logistics background image with dark overlay & subtle animated route lines */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=2200&q=85"
-            alt="FedEx Cargo Jet Tarmac at Night"
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover object-center opacity-40 scale-105 transition-transform duration-1000"
+      {/* PREMIUM LIVE LOGISTICS COMMAND CENTER */}
+      <section className="relative overflow-hidden bg-white text-slate-950 border-y border-slate-200/70">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-40 -right-24 h-[520px] w-[520px] rounded-full bg-purple-100/70 blur-3xl" />
+          <div className="absolute -bottom-48 left-1/3 h-[420px] w-[420px] rounded-full bg-orange-100/60 blur-3xl" />
+          <motion.div
+            className="absolute top-28 left-[18%] h-px w-[62%] bg-gradient-to-r from-transparent via-purple-300/70 to-transparent"
+            animate={{ opacity: [0.2, 0.8, 0.2], scaleX: [0.88, 1, 0.88] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A0414] via-[#0A0414]/75 to-[#0A0414]/85" />
-
-          {/* Animated Route Lines Background Canvas */}
-          <svg className="absolute inset-0 w-full h-full opacity-25 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M 100 500 Q 400 200 800 350 T 1500 150"
-              fill="none"
-              stroke="#FF6600"
-              strokeWidth="2"
-              strokeDasharray="6 8"
-              className="animate-pulse"
-            />
-            <path
-              d="M 50 250 Q 500 100 1100 400"
-              fill="none"
-              stroke="#9333EA"
-              strokeWidth="1.5"
-              strokeDasharray="4 6"
-            />
-          </svg>
         </div>
 
-        {/* Content Container */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 text-center flex flex-col items-center">
-          {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-slate-200 text-xs font-semibold uppercase tracking-wider mb-6 backdrop-blur-md">
-            <Radio className="w-3.5 h-3.5 text-[#FF6600] animate-pulse" />
-            Active Worldwide Fleet & Air Cargo Operations
-          </div>
-
-          {/* Prominent Brand Logo */}
-          <div className="mb-4">
-            <Logo light size="xl" serviceVariant="Express" />
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.08] font-display">
-            The World on Time. <br className="hidden sm:inline" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6600] via-amber-400 to-[#FF8533]">
-              Larger, Faster, Smarter.
-            </span>
-          </h1>
-
-          <p className="mt-5 text-base sm:text-xl text-slate-300 max-w-2xl font-normal leading-relaxed">
-            Connecting 99% of world commerce. Featuring our 710+ intercontinental freighter aircraft, 215,000 ground delivery vehicles, and state-of-the-art automated sorting super-hubs.
-          </p>
-
-          {/* Action CTAs */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <button
-              onClick={() => onNavigate('/ship')}
-              className="px-7 py-3.5 rounded-2xl bg-[#FF6600] hover:bg-[#E55C00] text-white font-extrabold text-sm sm:text-base shadow-xl shadow-[#FF6600]/30 transition-all flex items-center gap-2 group"
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16">
+          <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 lg:gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-20"
             >
-              Ship with FedEx
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              onClick={() => onNavigate('/equipment')}
-              className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm sm:text-base backdrop-blur-md transition-all flex items-center gap-2"
-            >
-              <Plane className="w-4 h-4 text-[#FF6600]" />
-              Heavy Fleet & Aircraft Showcase
-            </button>
-
-            <button
-              onClick={() => onNavigate('/quote')}
-              className="px-6 py-3.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 font-medium text-sm sm:text-base border border-slate-700 transition-all"
-            >
-              Rates & Transit Times
-            </button>
-          </div>
-
-          {/* QUICK TRACKING WIDGET (Immediately integrated into hero) */}
-          <div className="mt-12 w-full max-w-2xl bg-white/95 text-slate-900 rounded-3xl p-6 sm:p-7 shadow-2xl border border-white/50 backdrop-blur-xl text-left">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Search className="w-5 h-5 text-[#4D148C]" />
-                Track Consignment or Waybill
-              </h2>
-              <span className="text-[11px] text-slate-500 font-mono font-medium">
-                Live Sensor Telemetry
-              </span>
-            </div>
-
-            <form onSubmit={handleTrackSubmit} className="space-y-3">
-              <div className="flex flex-col sm:flex-row gap-2.5">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={trackingInput}
-                    onChange={e => setTrackingInput(e.target.value)}
-                    placeholder="Enter tracking number (e.g. NX839204715)"
-                    className="w-full pl-4 pr-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-300 text-slate-900 placeholder:text-slate-400 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#4D148C] focus:border-transparent transition-all"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="px-7 py-3.5 rounded-2xl bg-[#4D148C] hover:bg-[#3B0E6E] text-white font-bold text-sm shadow-md transition-all whitespace-nowrap flex items-center justify-center gap-2"
-                >
-                  <span>Track Package</span>
-                  <ArrowRight className="w-4 h-4 text-[#FF6600]" />
-                </button>
+              <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-2 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#4D148C]">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF6600] opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF6600]" />
+                </span>
+                Live logistics command center
               </div>
 
-              {trackingError && (
-                <div className="text-xs text-rose-600 flex items-center gap-1.5 mt-1 font-medium">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  {trackingError}
-                </div>
-              )}
+              <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-black tracking-[-0.04em] leading-[1.02] font-display">
+                Move What
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#4D148C] via-[#7C3AED] to-[#FF6600]">
+                  Matters.
+                </span>
+              </h1>
 
-              <div className="pt-2 text-[11px] text-slate-500">Enter the tracking number supplied with your shipment. Live tracking is available when carrier data is configured.</div>
-            </form>
+              <p className="mt-5 max-w-xl text-sm sm:text-base lg:text-lg leading-7 text-slate-600">
+                A smarter shipping workspace for creating, tracking and managing international deliveries with a clear view of every movement.
+              </p>
+
+              <div className="mt-7 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl">
+                {[
+                  { label: 'Fast delivery', value: '24/7', icon: Clock },
+                  { label: 'Secure handling', value: 'Protected', icon: ShieldCheck },
+                  { label: 'Global network', value: '220+', icon: Globe2 },
+                  { label: 'Live visibility', value: 'Realtime', icon: Activity },
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12 + index * 0.08, duration: 0.45 }}
+                    whileHover={{ y: -4, scale: 1.02 }}
+                    className="rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-sm backdrop-blur"
+                  >
+                    <item.icon className="h-4 w-4 text-[#4D148C]" />
+                    <div className="mt-2 text-sm font-extrabold text-slate-900">{item.value}</div>
+                    <div className="mt-0.5 text-[10px] font-medium text-slate-500">{item.label}</div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="mt-7 flex flex-wrap gap-3">
+                <motion.button
+                  whileHover={{ y: -2, scale: 1.015 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onNavigate('/ship')}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#4D148C] to-[#7C2DCE] px-6 py-3.5 text-sm font-extrabold text-white shadow-xl shadow-purple-200"
+                >
+                  Ship a package <ArrowRight className="h-4 w-4 text-[#FF6600]" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onNavigate('/track')}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-800 shadow-sm"
+                >
+                  Track shipment <Search className="h-4 w-4 text-[#4D148C]" />
+                </motion.button>
+              </div>
+            </motion.div>
+
+            <div className="relative min-h-[520px] sm:min-h-[590px] lg:min-h-[630px]">
+              {/* Professional logistics agent portrait */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 24 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute inset-x-8 sm:inset-x-14 lg:inset-x-12 bottom-0 top-8 overflow-hidden rounded-[2.5rem] border border-white/80 bg-slate-100 shadow-[0_35px_90px_rgba(77,20,140,0.20)]"
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1100&q=88"
+                  alt="Professional logistics operations agent"
+                  referrerPolicy="no-referrer"
+                  className="h-full w-full object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#18052D]/75 via-transparent to-white/5" />
+                <div className="absolute inset-0 bg-gradient-to-r from-white/15 via-transparent to-[#4D148C]/10" />
+                <div className="absolute bottom-6 left-6 right-6 rounded-2xl border border-white/20 bg-slate-950/55 p-4 text-white backdrop-blur-xl">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-300">Operations agent</div>
+                      <div className="mt-1 text-sm font-extrabold">Global shipment desk</div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-300">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                      Live
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Animated tracking command card */}
+              <motion.div
+                initial={{ opacity: 0, x: 25, y: -10 }}
+                animate={{ opacity: 1, x: 0, y: 0 }}
+                transition={{ delay: 0.45, duration: 0.6 }}
+                className="absolute right-0 top-10 z-30 w-[210px] sm:w-[245px] rounded-3xl border border-white/80 bg-white/92 p-4 shadow-2xl backdrop-blur-xl"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-extrabold text-slate-900">
+                    <span className="grid h-8 w-8 place-items-center rounded-xl bg-purple-50 text-[#4D148C]"><Box className="h-4 w-4" /></span>
+                    Live shipment
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600">In transit</span>
+                </div>
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-[#4D148C] to-[#FF6600]"
+                    animate={{ width: ['28%', '72%', '46%', '82%'] }}
+                    transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                </div>
+                <div className="mt-3 flex justify-between text-[10px] font-semibold text-slate-500">
+                  <span>New York</span><span>London</span>
+                </div>
+              </motion.div>
+
+              {/* Animated KPI card */}
+              <motion.div
+                initial={{ opacity: 0, x: -20, y: 10 }}
+                animate={{ opacity: 1, x: 0, y: 0 }}
+                transition={{ delay: 0.65, duration: 0.6 }}
+                className="absolute left-0 top-40 z-30 w-[190px] sm:w-[215px] rounded-3xl border border-purple-100 bg-white/90 p-4 shadow-2xl backdrop-blur-xl"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Shipment flow</span>
+                  <Activity className="h-4 w-4 text-[#FF6600]" />
+                </div>
+                <div className="mt-2 flex items-end gap-2">
+                  <motion.span
+                    className="text-3xl font-black text-slate-900"
+                    animate={{ opacity: [0.72, 1, 0.72] }}
+                    transition={{ duration: 2.4, repeat: Infinity }}
+                  >
+                    84%
+                  </motion.span>
+                  <span className="mb-1 text-[10px] font-bold text-emerald-600">network active</span>
+                </div>
+                <div className="mt-3 flex h-12 items-end gap-1">
+                  {[32, 48, 39, 67, 54, 78, 62, 88, 72, 96].map((height, index) => (
+                    <motion.span
+                      key={index}
+                      className="flex-1 rounded-t-md bg-gradient-to-t from-[#4D148C] to-[#9F67E9]"
+                      animate={{ height: [height + '%', Math.max(18, height - 20) + '%', height + '%'] }}
+                      transition={{ duration: 2.8 + index * 0.08, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Floating route signal */}
+              <motion.div
+                animate={{ y: [0, -8, 0], rotate: [0, 1.5, 0] }}
+                transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute bottom-24 right-2 sm:right-5 z-30 rounded-2xl border border-white/80 bg-slate-950/90 px-4 py-3 text-white shadow-2xl backdrop-blur-xl"
+              >
+                <div className="flex items-center gap-2 text-[10px] font-bold">
+                  <span className="relative flex h-2 w-2"><span className="absolute h-2 w-2 animate-ping rounded-full bg-[#FF6600]" /><span className="relative h-2 w-2 rounded-full bg-[#FF6600]" /></span>
+                  Route signal synchronized
+                </div>
+                <div className="mt-1 text-[9px] text-slate-400">Global network telemetry</div>
+              </motion.div>
+            </div>
           </div>
+
+          {/* Live tracking strip */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.55 }}
+            className="relative z-30 -mt-2 lg:-mt-8 rounded-[2rem] border border-slate-200 bg-white/95 p-4 sm:p-5 shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              <div className="min-w-[190px]">
+                <div className="text-sm font-extrabold text-slate-900">Track your shipment</div>
+                <div className="mt-0.5 text-[11px] text-slate-500">Enter a production tracking number for live status.</div>
+              </div>
+              <form onSubmit={handleTrackSubmit} className="flex-1 flex flex-col sm:flex-row gap-2.5">
+                <input
+                  type="text"
+                  value={trackingInput}
+                  onChange={e => setTrackingInput(e.target.value)}
+                  placeholder="Tracking number"
+                  className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
+                />
+                <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#4D148C] px-6 py-3 text-sm font-extrabold text-white shadow-lg shadow-purple-200">
+                  Track <ArrowRight className="h-4 w-4 text-[#FF6600]" />
+                </button>
+              </form>
+              <div className="hidden xl:flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                Production connected
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
