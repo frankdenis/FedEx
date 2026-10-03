@@ -26,4 +26,16 @@ export const api = {
   quote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request<{ price: number; estDaysMin: number; estDaysMax: number; currency: string; rateId: string }>('/api/quotes', { method: 'POST', body: JSON.stringify(input) }),
   createShipment: (input: unknown, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ id: string; trackingNumber: string | null }>('/api/shipments', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input) }),
   createPaymentCheckout: (shipmentId: string, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ checkoutUrl: string | null; sessionId: string }>('/api/payments/checkout', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ shipmentId }) }),
+  createGuestRequest: (input: unknown) => request<{ id: string; requestNumber: string; status: string }>('/api/guest/requests', { method: 'POST', body: JSON.stringify(input) }),
+  getGuestRequest: (id: string, email: string) => request<any>('/api/guest/requests/' + encodeURIComponent(id) + '?email=' + encodeURIComponent(email)),
+  sendGuestMessage: (id: string, email: string, input: unknown) => request<any>('/api/guest/requests/' + encodeURIComponent(id) + '/messages', { method: 'POST', body: JSON.stringify({ email, ...((input as any) || {}) }) }),
+  guestQuote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request<{ price: number; estDaysMin: number; estDaysMax: number; currency: string; rateId: string }>('/api/guest/quotes', { method: 'POST', body: JSON.stringify(input) }),
+  guestPaymentCheckout: (requestId: string, service: string, rateId: string, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ checkoutUrl: string | null; sessionId: string }>('/api/guest/payments/checkout', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ requestId, service, rateId }) }),
+  adminGuestRequests: () => request<any[]>('/api/admin/guest-requests'),
+  adminUpdateGuestRequest: (id: string, status: string, note = '') => request<any>('/api/admin/guest-requests/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify({ status, note }) }),
+  adminRates: () => request<any[]>('/api/admin/rates'),
+  adminSaveRate: (input: unknown) => request<any>('/api/admin/rates', { method: 'POST', body: JSON.stringify(input) }),
+  adminSiteSettings: () => request<any>('/api/admin/site-settings'),
+  adminSaveSiteSettings: (settings: unknown) => request<any>('/api/admin/site-settings', { method: 'PUT', body: JSON.stringify(settings) }),
+
 };
