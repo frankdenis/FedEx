@@ -120,10 +120,10 @@ export const ShipNowPage: React.FC<ShipNowPageProps> = ({ onNavigate }) => {
           Seamless Consignment Dispatch
         </span>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-1">
-          Create New Shipment
+          Ship Globally with Confidence
         </h1>
         <p className="text-slate-600 text-sm mt-2">
-          Generate international waybills, calculate duties, schedule courier collection, and print barcoded shipping labels.
+          Create a shipment, get a live production rate, arrange collection, and continue securely to payment.
         </p>
       </div>
 
