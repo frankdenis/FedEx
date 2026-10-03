@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, MessageSquare, Send, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface Props { onNavigate: (path:string)=>void; }
 
 export const GuestCommunicationPage: React.FC<Props> = ({ onNavigate }) => {
-  const [id,setId]=useState(''), [email,setEmail]=useState(''), [request,setRequest]=useState<any>(null), [body,setBody]=useState(''), [proof,setProof]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
+  const [id,setId]=useState(() => new URLSearchParams(window.location.search).get('guest') || ''), [email,setEmail]=useState(''), [request,setRequest]=useState<any>(null), [body,setBody]=useState(''), [proof,setProof]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
+  const paymentSuccess = new URLSearchParams(window.location.search).get('payment') === 'success';
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const guest = params.get('guest');
+    const payment = params.get('payment');
+    if (guest) setId(guest);
+    if (payment === 'success') setError('Payment confirmation is being synchronized. Enter the request email and open the thread to see the confirmed payment status.');
+  }, []);
   const load=async()=>{setBusy(true);setError('');try{setRequest(await api.guestRequest(id,email))}catch(e){setError(e instanceof Error?e.message:'Request not found.')}finally{setBusy(false)}};
   const send=async()=>{if(!body.trim()&&!proof.trim())return;setBusy(true);try{await api.guestMessage(id,email,body,proof);setBody('');setProof('');await load()}catch(e){setError(e instanceof Error?e.message:'Message could not be sent.')}finally{setBusy(false)}};
   return (
@@ -22,6 +30,7 @@ export const GuestCommunicationPage: React.FC<Props> = ({ onNavigate }) => {
               <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Request email" className="w-full rounded-xl border border-[#d9e1ed] px-3 py-3 text-sm font-semibold"/>
               <button onClick={load} disabled={busy} className="w-full rounded-xl bg-[#4D148C] py-3 text-sm font-black text-white">{busy?'Loading…':'Open secure thread'}</button>
             </div>
+            {paymentSuccess && !error && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-black text-emerald-800">Payment success received. Open your request thread to view the synchronized payment status.</div>}
             {error&&<div className="mt-4 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</div>}
           </section>
           <section className="rounded-[28px] bg-white p-6 shadow-xl">
