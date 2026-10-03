@@ -37,6 +37,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const [shipments, setShipments] = useState<any[]>([]);
   const [signedIn, setSignedIn] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [site, setSite] = useState<any>({});
   const active = slides[slide];
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     let live = true;
+    api.siteSettings().then((settings:any) => { if (live) setSite(settings || {}); }).catch(() => {});
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
       if (!live) return;
@@ -63,6 +65,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   }, []);
 
   const activeShipment = shipments[0] || null;
+  const homepageHeadline = site.headline || active.title;
+  const homepageAccent = site.accent || active.accent;
+  const homepageCopy = site.copy || active.copy;
+  const homepagePhoto = site.heroImage || heroPhoto;
   const shipmentCount = shipments.length;
   const statusText = activeShipment?.status || 'No active shipment';
 
@@ -128,8 +134,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div key={active.id} initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0)' }} exit={{ opacity: 0, y: -8, filter: 'blur(3px)' }} transition={{ duration: .42 }}>
                     <div className="flex items-center gap-2 text-xs font-black text-[#4D148C]"><span className="h-2.5 w-2.5 rounded-full bg-[#18b87b] shadow-[0_0_0_5px_rgba(24,184,123,.1)]" /> Welcome back, good morning</div>
-                    <h1 className="mt-5 text-[44px] font-black leading-[.93] tracking-[-.055em] text-[#10245e] sm:text-6xl lg:text-[66px]">{active.title}<span className="block bg-gradient-to-r from-[#4D148C] via-[#8b1de5] to-[#ef3b24] bg-clip-text text-transparent">{active.accent}</span></h1>
-                    <p className="mt-5 max-w-[525px] text-[15px] font-semibold leading-6 text-[#4b5d82]">{active.copy}</p>
+                    <h1 className="mt-5 text-[44px] font-black leading-[.93] tracking-[-.055em] text-[#10245e] sm:text-6xl lg:text-[66px]">{homepageHeadline}<span className="block bg-gradient-to-r from-[#4D148C] via-[#8b1de5] to-[#ef3b24] bg-clip-text text-transparent">{homepageAccent}</span></h1>
+                    <p className="mt-5 max-w-[525px] text-[15px] font-semibold leading-6 text-[#4b5d82]">{homepageCopy}</p>
                   </motion.div>
                 </AnimatePresence>
 
@@ -156,7 +162,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
               <div className="relative min-h-[460px] sm:min-h-[530px]">
                 <div className="absolute inset-3 overflow-hidden rounded-[34px] border border-white bg-[#eef4fb] shadow-[0_30px_80px_rgba(32,53,103,.18)]">
-                  <img src={heroPhoto} alt="Warehouse logistics professional using a tablet" className="absolute inset-0 h-full w-full object-cover object-[center_48%] saturate-[1.08] contrast-[1.06]" />
+                  <img src={homepagePhoto} alt="Warehouse logistics professional using a tablet" className="absolute inset-0 h-full w-full object-cover object-[center_48%] saturate-[1.08] contrast-[1.06]" />
                   <div className="absolute inset-0 bg-gradient-to-r from-[#ffffff]/75 via-transparent to-[#4D148C]/10" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0f1e4d]/45 via-transparent to-white/10" />
                   <div className="absolute left-5 top-5 rounded-xl border border-white/80 bg-white/92 px-3 py-2 shadow-xl backdrop-blur-xl">
