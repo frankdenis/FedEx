@@ -14,6 +14,11 @@ const tableMap: Record<string,string> = {
 
 const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };\n\nconst columnMap: Record<string,string> = {
   ownerUid: 'owner_uid',
+  userId: 'user_id',
+  threadId: 'thread_id',
+  senderUid: 'sender_uid',
+  senderRole: 'sender_role',
+  attachmentUrl: 'attachment_url',
   trackingNumber: 'tracking_number',
   carrierTrackingNumber: 'carrier_tracking_number',
   internalReference: 'internal_reference',
