@@ -8,19 +8,12 @@ const tableMap: Record<string,string> = {
   stripeEvents: 'stripe_events',
   auditLogs: 'audit_logs',
   shipments: 'shipments',
-  supportThreads: 'support_threads',
-  supportMessages: 'support_messages',
+  guestShippingRequests: 'guest_shipping_requests',
+  siteSettings: 'site_settings',
 };
-
-const keyMap: Record<string,string> = { carrierJobs: 'shipment_id' };
 
 const columnMap: Record<string,string> = {
   ownerUid: 'owner_uid',
-  userId: 'user_id',
-  threadId: 'thread_id',
-  senderUid: 'sender_uid',
-  senderRole: 'sender_role',
-  attachmentUrl: 'attachment_url',
   trackingNumber: 'tracking_number',
   carrierTrackingNumber: 'carrier_tracking_number',
   internalReference: 'internal_reference',
@@ -53,10 +46,16 @@ const columnMap: Record<string,string> = {
   shipmentNumber: 'shipment_number',
   firstName: 'first_name',
   lastName: 'last_name',
+  requestNumber: 'request_number',
+  verificationStatus: 'verification_status',
+  verificationNotes: 'verification_notes',
+  selectedService: 'selected_service',
+  quotedCost: 'quoted_cost',
+  stripeSessionId: 'stripe_session_id',
+  paymentProof: 'payment_proof',
 };
 
 function tableName(name:string){ return tableMap[name] || name; }
-function keyColumn(name:string){ return keyMap[name] || 'id'; }
 function col(name:string){ return columnMap[name] || name; }
 
 function encodeValue(value:any):any {
@@ -76,9 +75,9 @@ function encodeObject(input:any){
   return out;
 }
 
-function decodeRow(name:string,row:any):any {
+function decodeRow(row:any):any {
   if(!row) return null;
-  const out:any={id:row[keyColumn(name)]};
+  const out:any={id:row.id};
   for(const [k,v] of Object.entries(row)){
     const camel = Object.entries(columnMap).find(([,db])=>db===k)?.[0] || k;
     out[camel]=v;
@@ -108,7 +107,7 @@ class Query {
     if(this.max) q=q.limit(this.max);
     const {data,error}=await q;
     if(error) throw error;
-    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(this.name,row), new DocumentRef(this.name, String(row[keyColumn(this.name)]))))};
+    return {empty:!data?.length, docs:(data||[]).map((row:any)=>new DocumentSnapshot(decodeRow(row), new DocumentRef(this.name, String(row.id))))};
   }
 }
 
@@ -121,17 +120,17 @@ class DocumentSnapshot {
 class DocumentRef {
   constructor(private name:string, private id:string){}
   async get(){
-    const {data,error}=await supabaseAdmin.from(tableName(this.name)).select('*').eq(keyColumn(this.name),this.id).maybeSingle();
+    const {data,error}=await supabaseAdmin.from(tableName(this.name)).select('*').eq('id',this.id).maybeSingle();
     if(error) throw error;
-    return new DocumentSnapshot(decodeRow(this.name,data), new DocumentRef(this.name, this.id));
+    return new DocumentSnapshot(decodeRow(data), new DocumentRef(this.name, this.id));
   }
   async set(value:any, options?:{merge?:boolean}){
     const payload=encodeObject(value);
     if(options?.merge){
-      const {error}=await supabaseAdmin.from(tableName(this.name)).upsert({[keyColumn(this.name)]:this.id,...payload},{onConflict:keyColumn(this.name)});
+      const {error}=await supabaseAdmin.from(tableName(this.name)).upsert({id:this.id,...payload},{onConflict:'id'});
       if(error) throw error;
     }else{
-      const {error}=await supabaseAdmin.from(tableName(this.name)).insert({[keyColumn(this.name)]:this.id,...payload});
+      const {error}=await supabaseAdmin.from(tableName(this.name)).insert({id:this.id,...payload});
       if(error) throw error;
     }
   }
@@ -147,7 +146,7 @@ class DocumentRef {
         payload[col(key)] = encodeValue(valueItem);
       }
     }
-    const {error}=await supabaseAdmin.from(tableName(this.name)).update(payload).eq(keyColumn(this.name),this.id);
+    const {error}=await supabaseAdmin.from(tableName(this.name)).update(payload).eq('id',this.id);
     if(error) throw error;
   }
 }
@@ -160,7 +159,7 @@ class Collection {
   limit(value:number){ return new Query(this.name).limit(value); }
   async add(value:any){
     const id=crypto.randomUUID();
-    const {error}=await supabaseAdmin.from(tableName(this.name)).insert({[keyColumn(this.name)]:id,...encodeObject(value)});
+    const {data,error}=await supabaseAdmin.from(tableName(this.name)).insert({id,...encodeObject(value)}).select('*').single();
     if(error) throw error;
     return new DocumentRef(this.name,id);
   }

@@ -32,7 +32,7 @@ app.use((req, res, next) => {
   const allowedOrigin = process.env.CORS_ORIGIN;
   if (allowedOrigin) res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   return next();
 });
@@ -100,9 +100,38 @@ async function ensureFedexShipment(shipmentId: string): Promise<'created' | 'pro
 }
 
 async function processSuccessfulCheckout(session: Stripe.Checkout.Session): Promise<void> {
-  const shipmentId = session.metadata?.shipmentId;
-  if (!shipmentId || session.payment_status !== 'paid') return;
+  if (session.payment_status !== 'paid') return;
 
+  const guestRequestId = session.metadata?.guestRequestId;
+  if (guestRequestId) {
+    const requestRef = db.collection('guestShippingRequests').doc(guestRequestId);
+    const requestSnapshot = await requestRef.get();
+    if (!requestSnapshot.exists) return;
+    const request = requestSnapshot.data()!;
+    await requestRef.update({
+      status: 'paid_pending_review',
+      paymentReference: session.payment_intent || session.id,
+      stripeSessionId: session.id,
+      paidAt: new Date().toISOString(),
+      updatedAt: FieldValue.serverTimestamp(),
+      messages: FieldValue.arrayUnion({
+        id: randomUUID(),
+        sender: 'System',
+        message: 'Payment confirmed. Your request is now waiting for operational review.',
+        timestamp: new Date().toISOString(),
+      }),
+    });
+    await db.collection('auditLogs').add({
+      action: 'guest_payment.completed',
+      paymentReference: session.payment_intent || session.id,
+      details: request.requestNumber || guestRequestId,
+      timestamp: FieldValue.serverTimestamp(),
+    });
+    return;
+  }
+
+  const shipmentId = session.metadata?.shipmentId;
+  if (!shipmentId) return;
   const shipmentRef = db.collection('shipments').doc(shipmentId);
   const shipmentSnapshot = await shipmentRef.get();
   if (!shipmentSnapshot.exists) return;
@@ -116,7 +145,6 @@ async function processSuccessfulCheckout(session: Stripe.Checkout.Session): Prom
       paidAt: new Date().toISOString(),
       status: 'Payment Confirmed',
     });
-
     await db.collection('auditLogs').add({
       action: 'payment.completed',
       shipmentId,
@@ -124,7 +152,6 @@ async function processSuccessfulCheckout(session: Stripe.Checkout.Session): Prom
       timestamp: FieldValue.serverTimestamp(),
     });
   }
-
   await enqueueCarrierJob(shipmentId);
 }
 
@@ -167,6 +194,150 @@ app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), asy
 });
 
 app.use(express.json({ limit: '1mb' }));
+
+app.get('/api/site-settings', async (_req, res) => {
+  const snapshot = await db.collection('siteSettings').doc('homepage').get();
+  return res.json(snapshot.exists ? snapshot.data()?.value || {} : {});
+});
+
+app.post('/api/guest/requests', async (req, res) => {
+  try {
+    const customer = req.body?.customer || {};
+    const sender = req.body?.sender || {};
+    const recipient = req.body?.recipient || {};
+    const packageInfo = req.body?.packageInfo || {};
+    const email = String(customer.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'A valid email address is required.' });
+    if (!String(customer.firstName || '').trim() || !String(customer.lastName || '').trim()) return res.status(400).json({ error: 'First and last name are required.' });
+    if (!String(customer.phone || '').trim()) return res.status(400).json({ error: 'Phone number is required.' });
+    assertAddress(sender, 'sender');
+    assertAddress(recipient, 'recipient');
+    assertPackage(packageInfo);
+    const id = randomUUID();
+    const requestNumber = 'REQ-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + id.replace(/-/g,'').slice(0,8).toUpperCase();
+    const row = {
+      id, requestNumber, status:'details_submitted', verificationStatus:'pending',
+      verificationNotes:'Format validation passed. Identity authenticity requires operational verification.',
+      firstName:String(customer.firstName).trim(), lastName:String(customer.lastName).trim(),
+      email, phone:String(customer.phone).trim(), sender, recipient, packageInfo,
+      messages:[{id:randomUUID(),sender:'System',message:'Request received. Continue to the live shipping calculator to select a production rate.',timestamp:new Date().toISOString()}],
+      createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
+    };
+    await db.collection('guestShippingRequests').doc(id).set(row);
+    return res.status(201).json({ id, requestNumber, status:row.status });
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid shipping request.' });
+  }
+});
+
+app.get('/api/guest/requests/:id', async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  const snapshot = await db.collection('guestShippingRequests').doc(req.params.id.trim()).get();
+  if (!snapshot.exists || !email || String(snapshot.data()?.email || '').toLowerCase() !== email) return res.status(404).json({ error: 'Request not found.' });
+  const data = snapshot.data()!;
+  return res.json({ id:req.params.id, requestNumber:data.requestNumber, status:data.status, verificationStatus:data.verificationStatus, paymentStatus:data.paidAt ? 'Paid' : 'Pending', messages:data.messages || [], quotedCost:data.quotedCost || null, currency:data.currency || null });
+});
+
+app.post('/api/guest/requests/:id/messages', async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const snapshot = await db.collection('guestShippingRequests').doc(req.params.id.trim()).get();
+  if (!snapshot.exists || !email || String(snapshot.data()?.email || '').toLowerCase() !== email) return res.status(404).json({ error: 'Request not found.' });
+  const message = String(req.body?.message || '').trim();
+  const paymentProofReference = String(req.body?.paymentProofReference || '').trim();
+  if (!message && !paymentProofReference) return res.status(400).json({ error: 'Message or payment proof reference is required.' });
+  await snapshot.ref!.update({ messages: FieldValue.arrayUnion({id:randomUUID(),sender:'Customer',message:message || 'Payment proof submitted.',paymentProofReference:paymentProofReference || null,timestamp:new Date().toISOString()}), updatedAt:FieldValue.serverTimestamp() });
+  return res.json({ ok:true });
+});
+
+app.post('/api/guest/quotes', async (req, res) => {
+  try {
+    assertService(req.body.service);
+    if (typeof req.body.weightKg !== 'number' || req.body.weightKg <= 0) throw new Error('weightKg must be greater than zero.');
+    const rates = await db.collection('shippingRates').where('service','==',req.body.service).where('originCountry','==',req.body.originCountry).where('destCountry','==',req.body.destCountry).where('active','==',true).limit(1).get();
+    if (rates.empty) return res.status(503).json({ error:'No configured production rate is available for this route.' });
+    const rate=rates.docs[0].data();
+    const price=Math.round((Number(rate.baseRate)+Number(rate.perKgRate)*req.body.weightKg)*100)/100;
+    return res.json({price,estDaysMin:Number(rate.estDaysMin),estDaysMax:Number(rate.estDaysMax),currency:rate.currency || 'USD',rateId:rates.docs[0].id});
+  } catch(error) { return res.status(400).json({error:error instanceof Error?error.message:'Invalid quote request.'}); }
+});
+
+app.post('/api/guest/payments/checkout', async (req, res) => {
+  if (!stripe) return res.status(503).json({error:'Payment provider is not configured.'});
+  const requestId=String(req.body?.requestId || '').trim();
+  const service=String(req.body?.service || '').trim();
+  const rateId=String(req.body?.rateId || '').trim();
+  const idempotencyKey=req.header('Idempotency-Key');
+  if (!requestId || !service || !rateId) return res.status(400).json({error:'requestId, service and rateId are required.'});
+  if (!idempotencyKey || !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return res.status(400).json({error:'A valid Idempotency-Key is required.'});
+  if (!appBaseUrl) return res.status(503).json({error:'Application base URL is not configured.'});
+  const requestRef=db.collection('guestShippingRequests').doc(requestId);
+  const requestSnapshot=await requestRef.get();
+  if (!requestSnapshot.exists) return res.status(404).json({error:'Request not found.'});
+  const request=requestSnapshot.data()!;
+  if (!['details_submitted','awaiting_payment'].includes(String(request.status))) return res.status(409).json({error:'This request is no longer awaiting payment.'});
+  const rateSnapshot=await db.collection('shippingRates').doc(rateId).get();
+  if (!rateSnapshot.exists || rateSnapshot.data()?.service !== service || rateSnapshot.data()?.active !== true) return res.status(400).json({error:'Selected production rate is unavailable.'});
+  const rate=rateSnapshot.data()!;
+  const weight=Number(request.packageInfo?.weight || 0);
+  if (!weight) return res.status(400).json({error:'Request package weight is invalid.'});
+  const amount=Math.round((Number(rate.baseRate)+Number(rate.perKgRate)*weight)*100)/100;
+  const currency=String(rate.currency || 'USD').toLowerCase();
+  const session=await stripe.checkout.sessions.create({
+    mode:'payment',
+    success_url:appBaseUrl+'/communication?request='+encodeURIComponent(requestId)+'&payment=success',
+    cancel_url:appBaseUrl+'/quote?request='+encodeURIComponent(requestId)+'&payment=cancelled',
+    customer_email:request.email,
+    client_reference_id:requestId,
+    metadata:{guestRequestId:requestId,requestNumber:request.requestNumber},
+    integration_identifier:'fedex-guest-'+randomUUID().replace(/-/g,'').slice(0,8),
+    line_items:[{quantity:1,price_data:{currency,unit_amount:Math.round(amount*100),product_data:{name:'Guest shipping request '+request.requestNumber+' · '+service}}}],
+  },{idempotencyKey});
+  await requestRef.update({status:'awaiting_payment',selectedService:service,quotedCost:amount,currency:String(rate.currency || 'USD').toUpperCase(),rateId, stripeSessionId:session.id, updatedAt:FieldValue.serverTimestamp()});
+  return res.json({checkoutUrl:session.url,sessionId:session.id});
+});
+
+app.get('/api/admin/guest-requests', requireAuth, requireAdmin, async (_req,res) => {
+  const rows=await db.collection('guestShippingRequests').orderBy('createdAt','desc').limit(100).get();
+  return res.json(rows.docs.map((d:any)=>({id:d.data().id || d.ref?.id, ...d.data()})));
+});
+
+app.patch('/api/admin/guest-requests/:id', requireAuth, requireAdmin, async (req,res) => {
+  const status=String(req.body?.status || '');
+  if(!['approved','declined'].includes(status)) return res.status(400).json({error:'Status must be approved or declined.'});
+  const ref=db.collection('guestShippingRequests').doc(req.params.id.trim());
+  const snapshot=await ref.get();
+  if(!snapshot.exists) return res.status(404).json({error:'Request not found.'});
+  await ref.update({status,verificationStatus:status==='approved'?'passed':'failed',verificationNotes:String(req.body?.note || ''),updatedAt:FieldValue.serverTimestamp(),messages:FieldValue.arrayUnion({id:randomUUID(),sender:'Operations',message:status==='approved'?'Your paid request has been approved for operational processing.':'Your request was declined after operational review.',timestamp:new Date().toISOString()})});
+  await db.collection('auditLogs').add({actorUid:req.user!.uid,actorEmail:req.user!.email,action:'guest_request.'+status,details:req.params.id,timestamp:FieldValue.serverTimestamp()});
+  return res.json({ok:true,status});
+});
+
+app.get('/api/admin/rates', requireAuth, requireAdmin, async (_req,res) => {
+  const rows=await db.collection('shippingRates').orderBy('createdAt','desc').limit(200).get();
+  return res.json(rows.docs.map((d:any)=>({id:d.data().id || d.ref?.id,...d.data()})));
+});
+
+app.post('/api/admin/rates', requireAuth, requireAdmin, async (req,res) => {
+  const body=req.body || {};
+  if(!body.service || !body.originCountry || !body.destCountry) return res.status(400).json({error:'service, originCountry and destCountry are required.'});
+  const row={service:String(body.service),originCountry:String(body.originCountry),destCountry:String(body.destCountry),baseRate:Number(body.baseRate),perKgRate:Number(body.perKgRate),estDaysMin:Number(body.estDaysMin),estDaysMax:Number(body.estDaysMax),currency:String(body.currency || 'USD').toUpperCase(),active:body.active !== false,createdAt:new Date().toISOString()};
+  if(!Number.isFinite(row.baseRate)||row.baseRate<0||!Number.isFinite(row.perKgRate)||row.perKgRate<0) return res.status(400).json({error:'Rates must be valid non-negative numbers.'});
+  const doc=await db.collection('shippingRates').add(row);
+  return res.status(201).json({id:(doc as any).id,...row});
+});
+
+app.get('/api/admin/site-settings', requireAuth, requireAdmin, async (_req,res) => {
+  const snapshot=await db.collection('siteSettings').doc('homepage').get();
+  return res.json(snapshot.exists ? snapshot.data()?.value || {} : {});
+});
+
+app.put('/api/admin/site-settings', requireAuth, requireAdmin, async (req,res) => {
+  const value=req.body || {};
+  const ref=db.collection('siteSettings').doc('homepage');
+  await ref.set({id:'homepage',value,updatedAt:new Date().toISOString(),updatedBy:req.user!.uid},{merge:true});
+  await db.collection('auditLogs').add({actorUid:req.user!.uid,actorEmail:req.user!.email,action:'site_settings.updated',details:'homepage',timestamp:FieldValue.serverTimestamp()});
+  return res.json(value);
+});
 
 app.post('/api/internal/carrier-jobs/process', async (req, res) => {
   const secret = process.env.CARRIER_WORKER_SECRET;
@@ -401,111 +572,6 @@ app.post('/api/shipments/:trackingNumber/events', requireAuth, requireAdmin, asy
   await doc.ref.update({ status, events: FieldValue.arrayUnion(event) });
   await db.collection('auditLogs').add({ actorUid: req.user!.uid, actorEmail: req.user!.email, action: 'shipment.status.updated', shipmentNumber: trackingNumber, details: description, timestamp: FieldValue.serverTimestamp() });
   return res.json({ ok: true, event });
-});
-
-
-app.get('/api/admin/users', requireAuth, requireAdmin, async (_req, res) => {
-  const rows = await db.collection('users').orderBy('createdAt', 'desc').limit(200).get();
-  return res.json(rows.docs.map((doc: any) => doc.data()));
-});
-
-app.patch('/api/admin/users/:userId/status', requireAuth, requireAdmin, async (req, res) => {
-  const userId = req.params.userId.trim();
-  const status = req.body?.status;
-  if (!userId || !['active', 'suspended'].includes(status)) return res.status(400).json({ error: 'Invalid user status.' });
-  if (userId === req.user!.uid) return res.status(400).json({ error: 'You cannot suspend your own account.' });
-  await db.collection('users').doc(userId).update({ status });
-  return res.json({ ok: true });
-});
-
-app.get('/api/admin/rates', requireAuth, requireAdmin, async (_req, res) => {
-  const rows = await db.collection('shippingRates').orderBy('createdAt', 'desc').limit(500).get();
-  return res.json(rows.docs.map((doc: any) => doc.data()));
-});
-
-app.post('/api/admin/rates', requireAuth, requireAdmin, async (req, res) => {
-  const b = req.body || {};
-  const baseRate = Number(b.baseRate), perKgRate = Number(b.perKgRate), estDaysMin = Number(b.estDaysMin), estDaysMax = Number(b.estDaysMax);
-  if (!b.service || !b.originCountry || !b.destCountry || ![baseRate, perKgRate, estDaysMin, estDaysMax].every(Number.isFinite) || baseRate < 0 || perKgRate < 0 || estDaysMin < 0 || estDaysMax < estDaysMin) {
-    return res.status(400).json({ error: 'Invalid production rate.' });
-  }
-  const id = randomUUID();
-  await db.collection('shippingRates').doc(id).set({
-    id, service: String(b.service), originCountry: String(b.originCountry), destCountry: String(b.destCountry),
-    baseRate, perKgRate, estDaysMin, estDaysMax, currency: String(b.currency || 'USD').toUpperCase(),
-    active: b.active !== false, createdAt: new Date().toISOString()
-  });
-  return res.status(201).json({ id });
-});
-
-app.patch('/api/admin/rates/:rateId', requireAuth, requireAdmin, async (req, res) => {
-  const id = req.params.rateId.trim();
-  const allowed = ['service','originCountry','destCountry','baseRate','perKgRate','estDaysMin','estDaysMax','currency','active'];
-  const patch: any = {};
-  for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
-  for (const key of ['baseRate','perKgRate','estDaysMin','estDaysMax']) if (patch[key] !== undefined) patch[key] = Number(patch[key]);
-  if (patch.currency) patch.currency = String(patch.currency).toUpperCase();
-  await db.collection('shippingRates').doc(id).update(patch);
-  return res.json({ ok: true });
-});
-
-app.delete('/api/admin/rates/:rateId', requireAuth, requireAdmin, async (req, res) => {
-  await db.collection('shippingRates').doc(req.params.rateId.trim()).update({ active: false });
-  return res.json({ ok: true });
-});
-
-app.get('/api/admin/audit-logs', requireAuth, requireAdmin, async (_req, res) => {
-  const rows = await db.collection('auditLogs').orderBy('timestamp', 'desc').limit(200).get();
-  return res.json(rows.docs.map((doc: any) => doc.data()));
-});
-
-app.get('/api/support/threads', requireAuth, async (req, res) => {
-  const query = req.user!.admin
-    ? db.collection('supportThreads').orderBy('updatedAt', 'desc').limit(100)
-    : db.collection('supportThreads').where('userId', '==', req.user!.uid).orderBy('updatedAt', 'desc').limit(50);
-  const rows = await query.get();
-  return res.json(rows.docs.map((doc: any) => doc.data()));
-});
-
-app.post('/api/support/threads', requireAuth, async (req, res) => {
-  const subject = String(req.body?.subject || '').trim();
-  const body = String(req.body?.body || '').trim();
-  if (subject.length < 3 || !body) return res.status(400).json({ error: 'Subject and message are required.' });
-  const id = randomUUID(), messageId = randomUUID(), now = new Date().toISOString();
-  await db.collection('supportThreads').doc(id).set({
-    id, userId: req.user!.uid, subject, status: 'open',
-    priority: ['low','normal','high','urgent'].includes(req.body?.priority) ? req.body.priority : 'normal',
-    shipmentId: req.body?.shipmentId || null, createdAt: now, updatedAt: now, lastMessageAt: now
-  });
-  await db.collection('supportMessages').doc(messageId).set({
-    id: messageId, threadId: id, senderUid: req.user!.uid, senderRole: req.user!.admin ? 'admin' : 'customer',
-    body, paymentReference: req.body?.paymentReference || null, attachmentUrl: req.body?.attachmentUrl || null, createdAt: now
-  });
-  return res.status(201).json({ id });
-});
-
-app.get('/api/support/threads/:threadId/messages', requireAuth, async (req, res) => {
-  const id = req.params.threadId.trim();
-  const thread = await db.collection('supportThreads').doc(id).get();
-  if (!thread.exists) return res.status(404).json({ error: 'Conversation not found.' });
-  if (!req.user!.admin && thread.data()?.userId !== req.user!.uid) return res.status(403).json({ error: 'Forbidden.' });
-  const rows = await db.collection('supportMessages').where('threadId', '==', id).orderBy('createdAt', 'asc').limit(200).get();
-  return res.json(rows.docs.map((doc: any) => doc.data()));
-});
-
-app.post('/api/support/threads/:threadId/messages', requireAuth, async (req, res) => {
-  const id = req.params.threadId.trim(), body = String(req.body?.body || '').trim();
-  if (!body) return res.status(400).json({ error: 'Message cannot be empty.' });
-  const thread = await db.collection('supportThreads').doc(id).get();
-  if (!thread.exists) return res.status(404).json({ error: 'Conversation not found.' });
-  if (!req.user!.admin && thread.data()?.userId !== req.user!.uid) return res.status(403).json({ error: 'Forbidden.' });
-  const now = new Date().toISOString(), messageId = randomUUID();
-  await db.collection('supportMessages').doc(messageId).set({
-    id: messageId, threadId: id, senderUid: req.user!.uid, senderRole: req.user!.admin ? 'admin' : 'customer',
-    body, paymentReference: req.body?.paymentReference || null, attachmentUrl: req.body?.attachmentUrl || null, createdAt: now
-  });
-  await db.collection('supportThreads').doc(id).update({ updatedAt: now, lastMessageAt: now, status: req.user!.admin ? 'in_progress' : 'open' });
-  return res.status(201).json({ id: messageId });
 });
 
 app.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));

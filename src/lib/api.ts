@@ -19,6 +19,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  siteSettings: () => request<any>('/api/site-settings'),
   health: () => request<{ ok: boolean; service: string; version: string }>('/api/health'),
   me: () => request<{ uid: string; email: string; admin: boolean; profile: { firstName?: string; lastName?: string; phone?: string; country?: string; status?: string; createdAt?: string } | null }>('/api/me'),
   shipments: () => request('/api/shipments'),
@@ -26,15 +27,16 @@ export const api = {
   quote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request<{ price: number; estDaysMin: number; estDaysMax: number; currency: string; rateId: string }>('/api/quotes', { method: 'POST', body: JSON.stringify(input) }),
   createShipment: (input: unknown, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ id: string; trackingNumber: string | null }>('/api/shipments', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(input) }),
   createPaymentCheckout: (shipmentId: string, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ checkoutUrl: string | null; sessionId: string }>('/api/payments/checkout', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ shipmentId }) }),
-  adminUsers: () => request<any[]>('/api/admin/users'),
-  adminUpdateUserStatus: (userId: string, status: 'active' | 'suspended') => request('/api/admin/users/' + encodeURIComponent(userId) + '/status', { method: 'PATCH', body: JSON.stringify({ status }) }),
+  createGuestRequest: (input: unknown) => request<{ id: string; requestNumber: string; status: string }>('/api/guest/requests', { method: 'POST', body: JSON.stringify(input) }),
+  getGuestRequest: (id: string, email: string) => request<any>('/api/guest/requests/' + encodeURIComponent(id) + '?email=' + encodeURIComponent(email)),
+  sendGuestMessage: (id: string, email: string, input: unknown) => request<any>('/api/guest/requests/' + encodeURIComponent(id) + '/messages', { method: 'POST', body: JSON.stringify({ email, ...((input as any) || {}) }) }),
+  guestQuote: (input: { service: string; weightKg: number; originCountry: string; destCountry: string }) => request<{ price: number; estDaysMin: number; estDaysMax: number; currency: string; rateId: string }>('/api/guest/quotes', { method: 'POST', body: JSON.stringify(input) }),
+  guestPaymentCheckout: (requestId: string, service: string, rateId: string, idempotencyKey = globalThis.crypto.randomUUID()) => request<{ checkoutUrl: string | null; sessionId: string }>('/api/guest/payments/checkout', { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify({ requestId, service, rateId }) }),
+  adminGuestRequests: () => request<any[]>('/api/admin/guest-requests'),
+  adminUpdateGuestRequest: (id: string, status: string, note = '') => request<any>('/api/admin/guest-requests/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify({ status, note }) }),
   adminRates: () => request<any[]>('/api/admin/rates'),
-  adminCreateRate: (input: any) => request<{ id: string }>('/api/admin/rates', { method: 'POST', body: JSON.stringify(input) }),
-  adminUpdateRate: (rateId: string, input: any) => request('/api/admin/rates/' + encodeURIComponent(rateId), { method: 'PATCH', body: JSON.stringify(input) }),
-  adminDisableRate: (rateId: string) => request('/api/admin/rates/' + encodeURIComponent(rateId), { method: 'DELETE' }),
-  adminAuditLogs: () => request<any[]>('/api/admin/audit-logs'),
-  supportThreads: () => request<any[]>('/api/support/threads'),
-  supportCreateThread: (input: any) => request<{ id: string }>('/api/support/threads', { method: 'POST', body: JSON.stringify(input) }),
-  supportMessages: (threadId: string) => request<any[]>('/api/support/threads/' + encodeURIComponent(threadId) + '/messages'),
-  supportReply: (threadId: string, body: string, paymentReference?: string) => request('/api/support/threads/' + encodeURIComponent(threadId) + '/messages', { method: 'POST', body: JSON.stringify({ body, paymentReference }) }),
+  adminSaveRate: (input: unknown) => request<any>('/api/admin/rates', { method: 'POST', body: JSON.stringify(input) }),
+  adminSiteSettings: () => request<any>('/api/admin/site-settings'),
+  adminSaveSiteSettings: (settings: unknown) => request<any>('/api/admin/site-settings', { method: 'PUT', body: JSON.stringify(settings) }),
+
 };
