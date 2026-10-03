@@ -86,7 +86,10 @@ create table if not exists public.idempotency_keys (
 create table if not exists public.stripe_events (
   id text primary key,
   type text not null,
-  received_at timestamptz not null default now()
+  status text not null default 'processing' check (status in ('processing','processed','failed')),
+  attempts integer not null default 0,
+  received_at timestamptz not null default now(),
+  processed_at timestamptz
 );
 
 create table if not exists public.audit_logs (
@@ -267,3 +270,48 @@ grant execute on function public.claim_carrier_job(uuid) to service_role;
 grant execute on function public.enqueue_carrier_job(uuid) to service_role;
 grant execute on function public.create_shipment_idempotent(text,uuid,jsonb) to service_role;
 grant execute on function public.claim_carrier_shipment(uuid) to service_role;
+
+create or replace function public.claim_stripe_event(p_event_id text, p_event_type text)
+returns jsonb language plpgsql security invoker set search_path = public as $
+declare existing public.stripe_events%rowtype;
+begin
+  select * into existing from public.stripe_events where id=p_event_id for update;
+  if found then
+    if existing.type=p_event_type and existing.status='processed' then
+      return jsonb_build_object('result','processed');
+    end if;
+    if existing.status='processing' and existing.received_at > now()-interval '10 minutes' then
+      return jsonb_build_object('result','processing');
+    end if;
+    update public.stripe_events
+      set type=p_event_type, status='processing', attempts=attempts+1, received_at=now()
+      where id=p_event_id;
+    return jsonb_build_object('result','claimed');
+  end if;
+
+  insert into public.stripe_events(id,type,status,attempts,received_at)
+  values(p_event_id,p_event_type,'processing',1,now());
+  return jsonb_build_object('result','claimed');
+end;
+$;
+
+create or replace function public.complete_stripe_event(p_event_id text)
+returns void language plpgsql security invoker set search_path = public as $
+begin
+  update public.stripe_events set status='processed', processed_at=now() where id=p_event_id;
+end;
+$;
+
+create or replace function public.fail_stripe_event(p_event_id text)
+returns void language plpgsql security invoker set search_path = public as $
+begin
+  update public.stripe_events set status='failed', processed_at=null where id=p_event_id;
+end;
+$;
+
+revoke all on function public.claim_stripe_event(text,text) from public, anon, authenticated;
+revoke all on function public.complete_stripe_event(text) from public, anon, authenticated;
+revoke all on function public.fail_stripe_event(text) from public, anon, authenticated;
+grant execute on function public.claim_stripe_event(text,text) to service_role;
+grant execute on function public.complete_stripe_event(text) to service_role;
+grant execute on function public.fail_stripe_event(text) to service_role;
