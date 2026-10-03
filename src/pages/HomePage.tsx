@@ -99,6 +99,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const active = slides[slide];
+  const featuredShipment = shipments[0] || null;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
