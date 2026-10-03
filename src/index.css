@@ -133,3 +133,27 @@ button { font-weight: 750; }
 :root { font-synthesis-weight: none; }
 body { text-rendering: optimizeLegibility; }
 h1,h2,h3,h4,h5,h6,button { font-weight: 800; }
+
+
+/* Command-center finish: brighter surfaces, sharper type, smoother motion */
+:root {
+  --fedex-ink: #0a1d54;
+  --fedex-purple: #4d148c;
+  --fedex-orange: #ff6600;
+  --fedex-border: #dbe4f0;
+}
+body {
+  color: var(--fedex-ink);
+  background: #f8fbff;
+  font-weight: 500;
+}
+h1,h2,h3,h4,h5,h6,button {
+  font-weight: 850;
+  text-rendering: optimizeLegibility;
+}
+input, select, textarea {
+  font-weight: 650;
+}
+img {
+  image-rendering: auto;
+}
