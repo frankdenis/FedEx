@@ -165,9 +165,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                   <div className="relative min-h-[650px] sm:min-h-[740px]">
                     <div className="absolute inset-0 overflow-hidden rounded-[30px] border border-white bg-[#edf5ff] shadow-[0_30px_90px_rgba(32,53,103,.18)]">
                       <img
-                        src="/hero-girl.jpg"
-                        alt="Homepage portrait"
-                        className="absolute inset-0 h-full w-full object-contain object-center brightness-[1.06] saturate-[1.06] contrast-[1.04]"
+                        src={site.heroPortraitImage || site.heroImage || LOGISTICS_IMAGES.heroOperator}
+                        alt="Large portrait panel for the global air shipping homepage hero"
+                        className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.08] contrast-[1.06]"
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-white/68 via-white/12 to-[#4D148C]/18" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#101d48]/38 via-transparent to-white/8" />
