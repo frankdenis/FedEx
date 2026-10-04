@@ -156,6 +156,28 @@ export const TrackingPage: React.FC<TrackingPageProps> = ({ initialQuery = '', o
         )}
       </div>
 
+      {/* Empty tracking state: keep the page useful without fabricating shipments */}
+      {!selectedShipment && !errorMessage && (
+        <div className="max-w-4xl mx-auto py-4 sm:py-8">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+              <div className="w-14 h-14 shrink-0 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center">
+                <Package className="w-7 h-7 text-[#4D148C]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Ready to track your shipment</h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-500">Enter a production tracking number above. Once the production API returns a shipment, its live status, route, delivery estimate and tracking history will appear here.</p>
+              </div>
+            </div>
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4"><span className="font-bold text-slate-800">01 · Live status</span><p className="mt-1 text-slate-500">Current shipment state from the configured production service.</p></div>
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4"><span className="font-bold text-slate-800">02 · Transit history</span><p className="mt-1 text-slate-500">Milestones and movement history when supplied by the carrier.</p></div>
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4"><span className="font-bold text-slate-800">03 · Delivery details</span><p className="mt-1 text-slate-500">Origin, destination and estimated delivery information.</p></div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Shipment Details Result */}
       {selectedShipment ? (
         <div className="space-y-8 animate-in fade-in duration-300">
