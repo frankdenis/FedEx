@@ -23,7 +23,7 @@ const nav = [
 ] as const;
 
 const dashboardViews = [
-  { id: 'overview', eyebrow: 'Operations overview', title: 'Your World', accent: 'Our Priority', copy: 'Fast, reliable and secure shipping solutions for individuals and businesses, anywhere in the world.', label: 'Command center', status: 'Ready' },
+  { id: 'overview', eyebrow: 'Operations overview', title: 'Your World', accent: 'Our Priority', copy: 'Fast, reliable and secure shipping solutions for individuals and businesses, anywhere in the world.', label: 'Track Your Shipment', status: 'Live' },
   { id: 'tracking', eyebrow: 'Live tracking', title: 'Track Every', accent: 'Shipment', copy: 'Follow production shipments through pickup, transit and delivery with a clear, responsive tracking workspace.', label: 'Tracking workspace', status: 'Monitoring' },
   { id: 'shipping', eyebrow: 'Shipment creation', title: 'Ship With', accent: 'Confidence', copy: 'Request a shipment without an account, calculate a production rate and pay securely before operational review.', label: 'Shipment workflow', status: 'Ready' },
   { id: 'global', eyebrow: 'Worldwide delivery', title: 'Move Across', accent: 'Borders', copy: 'Connect international services, route support and customer communication from one premium command center.', label: 'Global network', status: 'Connected' },
@@ -44,11 +44,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const [site, setSite] = useState<any>({});
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const active = dashboardViews[view];
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setView(current => (current + 1) % dashboardViews.length), 6500);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     Promise.allSettled([api.siteSettings(), api.shipments()]).then(([settings, records]) => {
@@ -100,7 +95,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             ))}
           </nav>
           <div className="p-4">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4D148C] via-[#7022c8] to-[#ff6600] p-4 text-white shadow-xl">
+            <div className="relative min-h-[188px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#4D148C] via-[#7022c8] to-[#ff6600] p-4 text-white shadow-xl">
               <div className="relative z-10">
                 <div className="text-[16px] font-black leading-tight">Global Reach.<br />Local Care.</div>
                 <p className="mt-2 text-[10px] font-semibold leading-4 text-white/85">Shipping, tracking, payment and support in one workspace.</p>
@@ -179,14 +174,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  <div className="relative min-h-[510px] sm:min-h-[600px]">
+                  <div className="relative min-h-[560px] sm:min-h-[650px]">
                     <div className="absolute inset-0 overflow-hidden rounded-[30px] border border-white bg-[#edf5ff] shadow-[0_30px_90px_rgba(32,53,103,.18)]">
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.img
                           key={active.id}
                           src={site.heroImage || LOGISTICS_IMAGES.heroOperator}
                           alt="Professional logistics specialist reviewing a shipment on a tablet in a modern distribution center"
-                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.12] saturate-[1.08] contrast-[1.08]"
+                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.08] contrast-[1.06]"
                           initial={{ opacity: 0, scale: 1.035 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0 }}
@@ -202,7 +197,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                         <div className="mt-1 text-[10px] font-bold text-[#53617d]">{activeShipment ? (activeShipment.sender?.city || 'Origin') + ' → ' + (activeShipment.recipient?.city || 'Destination') : 'Live shipment data appears when available.'}</div>
                       </div>
 
-                      <div className="absolute right-5 top-5 w-[215px] rounded-2xl border border-white/90 bg-white/96 p-4 shadow-2xl backdrop-blur-xl">
+                      <div className="absolute right-5 top-5 w-[225px] rounded-2xl border border-white/90 bg-white/96 p-4 shadow-2xl backdrop-blur-xl">
                         <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#18b87b]" /><span className="text-[10px] font-black text-[#183066]">Shipment Progress</span></div>
                         <div className="mt-4 space-y-3">
                           {['Shipment created', 'Picked up', 'In transit', 'Out for delivery'].map((label, i) => <div key={label} className="flex items-center gap-2.5"><span className={'grid h-5 w-5 shrink-0 place-items-center rounded-full ' + (activeShipment && i < 2 ? 'bg-[#4D148C] text-white' : 'bg-[#edf1f7] text-[#8994aa]')}><CheckCircle2 className="h-3 w-3" /></span><span className="text-[9px] font-extrabold text-[#4d5e7d]">{label}</span></div>)}
