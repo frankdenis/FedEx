@@ -184,9 +184,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.img
                           key={active.id}
-                          src={site.heroImage || LOGISTICS_IMAGES.heroAircraft}
-                          alt="Premium cargo aircraft and global logistics operations"
-                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.18] saturate-[1.15] contrast-[1.12]"
+                          src={site.heroImage || LOGISTICS_IMAGES.heroOperator}
+                          alt="Professional logistics specialist reviewing a shipment on a tablet in a modern distribution center"
+                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.12] saturate-[1.08] contrast-[1.08]"
                           initial={{ opacity: 0, scale: 1.035 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0 }}

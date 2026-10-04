@@ -157,3 +157,7 @@ input, select, textarea {
 img {
   image-rendering: auto;
 }
+
+/* Final dashboard polish */
+body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.dashboard-photo { filter: saturate(1.08) contrast(1.06) brightness(1.08); will-change: transform; }
