@@ -165,7 +165,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                   <div className="relative min-h-[650px] sm:min-h-[700px]">
                     <div className="absolute inset-0 overflow-hidden rounded-[26px] border border-[#d9e3f1] bg-[#edf5ff] shadow-[0_30px_90px_rgba(32,53,103,.18)]">
                       <img
-                        src={/operator.webp}
+                        src="/operator.webp"
                         alt="Large portrait panel for the global air shipping homepage hero"
                         className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.04] saturate-[1.04] contrast-[1.03]"
                       />
