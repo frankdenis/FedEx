@@ -509,6 +509,9 @@ app.post('/api/admin/guest-requests/:requestId/decision', requireAuth, requireAd
   if(!snapshot.exists) return res.status(404).json({error:'Guest request not found.'});
   const request=snapshot.data()!;
   const now=new Date().toISOString();
+  if(!request.paidAt || request.status !== 'paid_pending_review'){
+    return res.status(409).json({error:'Payment must be confirmed before an operational review decision can be made.'});
+  }
   if(decision==='approve'){
     if(!request.paidAt || request.status !== 'paid_pending_review'){
       return res.status(409).json({error:'Payment must be confirmed before an approved guest request can proceed to fulfillment.'});
