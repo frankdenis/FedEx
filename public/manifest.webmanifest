@@ -1,12 +1,21 @@
 {
   "name": "FedEx Global Logistics",
   "short_name": "FedEx Logistics",
-  "description": "Global shipping, tracking and logistics platform.",
+  "description": "Ship, track and manage deliveries worldwide with a production logistics platform.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f8fafc",
   "theme_color": "#4D148C",
   "scope": "/",
-  "lang": "en"
+  "lang": "en",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
