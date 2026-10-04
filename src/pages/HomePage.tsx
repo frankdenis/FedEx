@@ -131,7 +131,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <section className="relative overflow-hidden border-b border-[#dfe6f0] bg-white">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_25%,rgba(77,20,140,.08),transparent_30%),radial-gradient(circle_at_8%_0%,rgba(42,135,255,.13),transparent_32%)]" />
               <div className="relative mx-auto max-w-[1510px] px-4 py-5 sm:px-7 lg:px-9 lg:py-7">
-                <div className="grid gap-6 xl:grid-cols-[.72fr_1.28fr]">
+                <div className="grid gap-6 xl:grid-cols-[.86fr_1.14fr]">
                   <div className="min-w-0 pt-2">
                     <div>
                       <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe7f5] bg-white px-3 py-1.5 text-[10px] font-black text-[#355181] shadow-sm"><span className="h-2 w-2 rounded-full bg-[#18b87b]" /> Welcome back · Good Morning</div>
@@ -162,14 +162,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  <div className="relative min-h-[650px] sm:min-h-[740px]">
-                    <div className="absolute inset-0 overflow-hidden rounded-[30px] border border-white bg-[#edf5ff] shadow-[0_30px_90px_rgba(32,53,103,.18)]">
+                  <div className="relative min-h-[650px] sm:min-h-[700px]">
+                    <div className="absolute inset-0 overflow-hidden rounded-[26px] border border-[#d9e3f1] bg-[#edf5ff] shadow-[0_30px_90px_rgba(32,53,103,.18)]">
                       <img
-                        src={site.heroPortraitImage || site.heroImage || LOGISTICS_IMAGES.heroOperator}
+                        src={/operator.webp}
                         alt="Large portrait panel for the global air shipping homepage hero"
-                        className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.08] contrast-[1.06]"
+                        className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.04] saturate-[1.04] contrast-[1.03]"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-r from-white/68 via-white/12 to-[#4D148C]/18" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/38 via-transparent to-[#4D148C]/12" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#101d48]/38 via-transparent to-white/8" />
 
                       <div className="absolute left-5 top-5 max-w-[250px] rounded-2xl border border-white/90 bg-white/96 p-4 shadow-2xl backdrop-blur-xl">
