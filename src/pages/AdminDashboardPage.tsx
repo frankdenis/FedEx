@@ -17,6 +17,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const [tab, setTab] = useState<'overview'|'shipments'|'users'|'rates'|'requests'|'messages'|'site'|'settings'|'audit'>('overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [selectedThread, setSelectedThread] = useState<any>(null);
+  const [threadMessages, setThreadMessages] = useState<any[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const [paymentReference, setPaymentReference] = useState('');
 
   const load = async () => {
     setBusy(true); setError('');
@@ -37,6 +41,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
   const paid = useMemo(() => shipments.filter(s => String(s.paymentStatus).toLowerCase() === 'paid').length, [shipments]);
   const pending = useMemo(() => shipments.filter(s => String(s.paymentStatus).toLowerCase() !== 'paid').length, [shipments]);
   const activeRates = rates.filter(r => r.active).length;
+  const openThread = async (thread:any) => { setSelectedThread(thread); setReplyText(''); setPaymentReference(''); setError(''); try { setThreadMessages(await api.supportMessages(thread.id)); } catch (e) { setError(e instanceof Error ? e.message : 'Conversation could not be loaded.'); } };
+  const sendAdminReply = async () => { if (!selectedThread || !replyText.trim()) return; setBusy(true); setError(''); try { await api.supportReply(selectedThread.id, replyText.trim(), paymentReference.trim() || undefined); setReplyText(''); setPaymentReference(''); await openThread(selectedThread); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'Reply could not be sent.'); } finally { setBusy(false); } };
   const saveSiteSettings = async () => { setBusy(true); setError(''); try { await api.adminSaveSiteSettings(siteSettings); } catch (e) { setError(e instanceof Error ? e.message : 'Homepage settings could not be saved.'); } finally { setBusy(false); } };
 
   if (me && !me.admin) {
@@ -80,7 +86,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onNaviga
 
 
 
-{tab==='messages' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm p-5"><div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black text-[#17285e]">Fast communication dashboard</h2></div><p className="mt-2 text-xs text-slate-500">Customer messages, payment references and shipment questions are routed through the secured support API. A payment reference is informational only; payment status is confirmed by Stripe webhooks.</p><div className="mt-5 space-y-3">{threads.map(t=><div key={t.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex justify-between gap-3"><div className="text-sm font-black">{t.subject}</div><div className="text-[9px] font-black uppercase text-[#4D148C]">{t.status}</div></div><div className="mt-1 text-[10px] text-slate-500">Priority {t.priority} · {t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</div></div>)}</div></section>}
+{tab==='messages' && <section className="rounded-3xl border border-[#dfe5ef] bg-white shadow-sm p-5">
+          <div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#4D148C]"/><h2 className="font-black text-[#17285e]">Fast communication dashboard</h2></div>
+          <p className="mt-2 text-xs text-slate-500">Reply to customers, review payment references and keep shipment questions in one secured workspace. Payment references are evidence submitted by the customer; Stripe remains the source of truth for payment status.</p>
+          <div className="mt-5 grid gap-5 lg:grid-cols-[.72fr_1.28fr]">
+            <div className="space-y-2.5">
+              {threads.map(t=><button key={t.id} onClick={()=>openThread(t)} className={'w-full rounded-2xl border p-4 text-left transition '+(selectedThread?.id===t.id?'border-[#4D148C] bg-[#faf7ff]':'border-slate-100 hover:border-purple-200')}>
+                <div className="flex justify-between gap-3"><div className="text-sm font-black text-slate-800">{t.subject}</div><div className="text-[9px] font-black uppercase text-[#4D148C]">{t.status}</div></div>
+                <div className="mt-1 text-[10px] text-slate-500">Priority {t.priority} · {t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</div>
+              </button>)}
+              {!threads.length&&<div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-xs font-semibold text-slate-500">No customer conversations yet.</div>}
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-[#f8faff] p-4">
+              {selectedThread ? <><div className="flex items-center justify-between gap-3"><div><div className="text-[9px] font-black uppercase tracking-[.14em] text-[#4D148C]">Secure conversation</div><h3 className="mt-1 text-base font-black text-[#17285e]">{selectedThread.subject}</h3></div><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-[#4D148C]">{selectedThread.priority}</span></div>
+                <div className="mt-4 max-h-[320px] space-y-2 overflow-y-auto rounded-2xl bg-white p-3">{threadMessages.map(m=><div key={m.id} className={'rounded-xl p-3 '+(m.senderRole==='admin'?'bg-[#f0e8ff]':'bg-[#f4f7fb]')}><div className="text-[9px] font-black uppercase text-[#7b879f]">{m.senderRole||'customer'} · {m.createdAt ? new Date(m.createdAt).toLocaleString() : ''}</div><div className="mt-1 text-xs font-semibold text-[#2d3c64]">{m.body}</div>{m.paymentReference&&<div className="mt-2 text-[10px] font-black text-[#4D148C]">Payment reference: {m.paymentReference}</div>}</div>)}</div>
+                <textarea value={replyText} onChange={e=>setReplyText(e.target.value)} placeholder="Reply to customer…" className="mt-3 min-h-24 w-full rounded-xl border border-[#d9e1ed] bg-white px-3 py-3 text-sm font-semibold"/>
+                <div className="mt-2 flex gap-2"><input value={paymentReference} onChange={e=>setPaymentReference(e.target.value)} placeholder="Payment reference (optional)" className="min-w-0 flex-1 rounded-xl border border-[#d9e1ed] bg-white px-3 py-3 text-xs font-semibold"/><button onClick={sendAdminReply} disabled={busy||!replyText.trim()} className="rounded-xl bg-[#4D148C] px-4 py-3 text-xs font-black text-white disabled:opacity-50">Send</button></div>
+              </> : <div className="grid min-h-[360px] place-items-center text-center text-sm font-semibold text-[#7b879f]"><div><MessageSquare className="mx-auto h-8 w-8 text-[#c6d0df]"/><div className="mt-3">Select a customer conversation to view messages and respond.</div></div></div>}
+            </div>
+          </div>
+        </section>}
 
         {tab==='site' && <section className="rounded-3xl border border-[#dfe5ef] bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#4D148C]"/><div><h2 className="font-black text-[#17285e]">Website presentation controls</h2><p className="text-xs font-semibold text-slate-500">Changes here appear on the public homepage.</p></div></div>

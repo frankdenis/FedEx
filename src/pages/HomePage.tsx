@@ -42,6 +42,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const [error, setError] = useState('');
   const [shipments, setShipments] = useState<any[]>([]);
   const [site, setSite] = useState<any>({});
+  const [me, setMe] = useState<any>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const active = slides[slide];
 
@@ -51,12 +52,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   }, []);
 
   useEffect(() => {
-    Promise.allSettled([api.siteSettings(), api.shipments()]).then(([settings, records]) => {
+    Promise.allSettled([api.siteSettings(), api.shipments(), api.me()]).then(([settings, records, profile]) => {
       if (settings.status === 'fulfilled') setSite(settings.value || {});
       if (records.status === 'fulfilled') {
         const value: any = records.value;
         setShipments(Array.isArray(value) ? value.slice(0, 5) : Array.isArray(value?.shipments) ? value.shipments.slice(0, 5) : []);
       }
+      if (profile.status === 'fulfilled') setMe(profile.value || null);
     });
   }, []);
 
@@ -73,6 +75,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   };
 
   const activeShipment = shipments[0];
+  const defaultHeroImage = 'https://images.pexels.com/photos/6169023/pexels-photo-6169023.jpeg?auto=compress&cs=tinysrgb&w=2400';
+  const heroImage = site.heroImage && !String(site.heroImage).includes('1553413077') ? site.heroImage : defaultHeroImage;
   const liveCount = useMemo(
     () => shipments.filter(s => !['Delivered', 'Cancelled'].includes(String(s.status || ''))).length,
     [shipments]
@@ -233,9 +237,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.img
                           key={active.id}
-                          src={site.heroImage || LOGISTICS_IMAGES.heroOperator || LOGISTICS_IMAGES.cargoFreighter}
+                          src={heroImage}
                           alt="Premium logistics operations and parcel distribution"
-                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.16] saturate-[1.12] contrast-[1.12]"
+                          className="absolute inset-0 h-full w-full object-cover object-[62%_center] brightness-[1.2] saturate-[1.12] contrast-[1.1]"
                           initial={{ opacity: 0, scale: 1.025 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0 }}
@@ -317,6 +321,32 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                         <span className="flex-1 text-xs font-black text-[#24345f]">{label}</span><ArrowRight className="h-4 w-4 text-[#8490a7]" />
                       </button>
                     ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+
+            <section className="mx-auto max-w-[1510px] px-4 pb-8 sm:px-7 lg:px-9">
+              <div className="overflow-hidden rounded-[28px] border border-[#dce5f1] bg-white shadow-[0_18px_55px_rgba(35,53,95,.09)]">
+                <div className="grid gap-0 lg:grid-cols-[.72fr_1.28fr]">
+                  <div className="p-6 sm:p-8">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-[#f1eaff] px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-[#4D148C]"><Globe2 className="h-3.5 w-3.5"/> Global network</div>
+                    <h2 className="mt-3 text-2xl font-black tracking-tight text-[#13265d] sm:text-3xl">Global movement, clearly visible.</h2>
+                    <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-[#6e7c98]">A bright command-center view for routes, shipment milestones and customer visibility. Operational records are shown when available.</p>
+                    <div className="mt-6 grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl bg-[#f7f9fd] p-4"><div className="text-[10px] font-black uppercase text-[#7b879f]">Active route</div><div className="mt-1 text-sm font-black text-[#172a61]">{activeShipment?.sender?.city || 'Origin'} → {activeShipment?.recipient?.city || 'Destination'}</div></div>
+                      <div className="rounded-2xl bg-[#f7f9fd] p-4"><div className="text-[10px] font-black uppercase text-[#7b879f]">Shipment state</div><div className="mt-1 text-sm font-black text-[#172a61]">{activeShipment?.status || 'Awaiting live data'}</div></div>
+                    </div>
+                  </div>
+                  <div className="relative min-h-[260px] overflow-hidden bg-[radial-gradient(circle_at_50%_50%,rgba(119,45,225,.20),transparent_34%),linear-gradient(135deg,#eef5ff,#fbfaff)]">
+                    <div className="absolute inset-0 opacity-80 [background-image:radial-gradient(#b9c9e2_1px,transparent_1px)] [background-size:22px_22px]" />
+                    <div className="absolute left-[12%] top-[58%] h-3 w-3 rounded-full bg-[#4D148C] shadow-[0_0_0_7px_rgba(77,20,140,.10),0_0_30px_rgba(77,20,140,.55)]" />
+                    <div className="absolute right-[18%] top-[31%] h-3 w-3 rounded-full bg-[#ff6600] shadow-[0_0_0_7px_rgba(255,102,0,.10),0_0_30px_rgba(255,102,0,.55)]" />
+                    <div className="absolute left-[14%] top-[58%] h-px w-[72%] origin-left rotate-[-20deg] bg-gradient-to-r from-[#4D148C] via-[#8f39ef] to-[#ff6600]" />
+                    <div className="absolute left-[19%] top-[51%] rounded-full border border-white/90 bg-white/90 px-3 py-2 text-[9px] font-black text-[#243566] shadow-lg">{activeShipment?.sender?.city || 'Origin'}<span className="mx-1 text-[#8b95aa]">•</span> Departed</div>
+                    <div className="absolute right-[12%] top-[22%] rounded-full border border-white/90 bg-white/90 px-3 py-2 text-[9px] font-black text-[#243566] shadow-lg">{activeShipment?.recipient?.city || 'Destination'}<span className="mx-1 text-[#8b95aa]">•</span> Destination</div>
+                    <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between rounded-2xl border border-white/90 bg-white/90 px-4 py-3 shadow-xl backdrop-blur-xl"><span className="text-[10px] font-black text-[#253766]">Route telemetry</span><span className="text-[10px] font-black text-emerald-600">{activeShipment ? 'Live record' : 'Waiting for production data'}</span></div>
                   </div>
                 </div>
               </div>
