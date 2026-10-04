@@ -1,0 +1,2 @@
+FedEx Global Logistics production release 2026-10-04
+UI, metadata, PWA icon and production API resilience updates.
