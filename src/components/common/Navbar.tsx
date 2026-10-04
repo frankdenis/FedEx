@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onOpenChat}
               title="FedEx Virtual Dispatch Assistant"
-              className="p-2 sm:px-3 sm:py-2 rounded-xl text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center gap-1.5 border border-cyan-500/30"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl text-[#42516f] hover:text-[#14265e] hover:bg-cyan-500/10 transition-colors flex items-center gap-1.5 border border-cyan-500/30"
             >
               <Sparkles className="w-4 h-4 text-cyan-400" />
               <span className="hidden sm:inline text-xs font-medium">Assistant</span>
@@ -159,7 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={() => onNavigate('/chat')}
               title="Google Chat Logistics Dispatch"
-              className={`p-2 sm:px-3 sm:py-2 rounded-xl transition-colors flex items-center gap-1.5 border ${
+              className={`hidden md:flex p-2 sm:px-3 sm:py-2 rounded-xl transition-colors items-center gap-1.5 border ${
                 currentPath.startsWith('/chat')
                   ? 'bg-[#4D148C] text-white border-purple-400/60 shadow-lg shadow-purple-950/50'
                   : 'text-white bg-[#FF6600]/15 hover:bg-[#FF6600]/25 border-[#FF6600]/40'
@@ -184,7 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {/* Notification Bell with Badge */}
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <button
                 onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
                 className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors relative"
@@ -347,7 +347,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <button
                   onClick={() => onNavigate('/login')}
                   className="text-xs font-semibold px-3 py-2 rounded-xl text-slate-300 hover:text-white transition-colors"
@@ -366,7 +366,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+              className="lg:hidden p-2 rounded-xl text-[#42516f] hover:text-[#14265e] hover:bg-[#f4f6fa] transition-colors"
               aria-label="Toggle Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
