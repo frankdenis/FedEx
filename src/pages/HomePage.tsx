@@ -107,10 +107,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               </button>
               <div className="ml-auto flex items-center gap-1.5">
                 <button className="hidden items-center gap-2 rounded-xl px-3 py-2 text-xs font-black text-[#243667] hover:bg-[#f3f6fb] sm:flex"><Globe2 className="h-4 w-4" /> EN <ChevronDown className="h-3.5 w-3.5" /></button>
-                <button className="relative grid h-10 w-10 place-items-center rounded-xl text-[#25396d] hover:bg-[#f3f6fb]" aria-label="Notifications"><Bell className="h-5 w-5" /><span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[#ef3b24] px-1 text-[8px] font-black text-white">!</span></button>
+                <button className="relative grid h-10 w-10 place-items-center rounded-xl text-[#25396d] hover:bg-[#f3f6fb]" aria-label="Notifications"><Bell className="h-5 w-5" /></button>
                 <button onClick={() => onNavigate('/login')} className="flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-[#f3f6fb]">
                   <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#4D148C] to-[#7c2bd8] text-white"><UserRound className="h-4 w-4" /></span>
-                  <span className="hidden text-left sm:block"><span className="block text-[9px] font-semibold text-[#8a96ac]">Account</span><span className="block text-xs font-black text-[#1b2e63]">Google / Gmail</span></span>
+                  <span className="hidden text-left sm:block"><span className="block text-[9px] font-semibold text-[#8a96ac]">Account</span><span className="block text-xs font-black text-[#1b2e63]">Customer Portal</span></span>
                   <ChevronDown className="hidden h-3.5 w-3.5 text-[#697692] sm:block" />
                 </button>
               </div>
@@ -131,7 +131,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <section className="relative overflow-hidden border-b border-[#dfe6f0] bg-white">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_25%,rgba(77,20,140,.08),transparent_30%),radial-gradient(circle_at_8%_0%,rgba(42,135,255,.13),transparent_32%)]" />
               <div className="relative mx-auto max-w-[1510px] px-4 py-5 sm:px-7 lg:px-9 lg:py-7">
-                <div className="grid gap-6 xl:grid-cols-[.82fr_1.18fr]">
+                <div className="grid gap-6 xl:grid-cols-[.72fr_1.28fr]">
                   <div className="min-w-0 pt-2">
                     <div>
                       <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe7f5] bg-white px-3 py-1.5 text-[10px] font-black text-[#355181] shadow-sm"><span className="h-2 w-2 rounded-full bg-[#18b87b]" /> Welcome back · Good Morning</div>
@@ -162,18 +162,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  <div className="relative min-h-[590px] sm:min-h-[660px]">
+                  <div className="relative min-h-[650px] sm:min-h-[740px]">
                     <div className="absolute inset-0 overflow-hidden rounded-[30px] border border-white bg-[#edf5ff] shadow-[0_30px_90px_rgba(32,53,103,.18)]">
                       <img
-                        src={site.heroImage || LOGISTICS_IMAGES.heroOperator}
-                        alt="Professional logistics specialist reviewing a shipment on a tablet in a modern distribution center"
+                        src={site.heroPortraitImage || site.heroImage || LOGISTICS_IMAGES.heroOperator}
+                        alt="Large portrait panel for the global air shipping homepage hero"
                         className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.08] contrast-[1.06]"
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-white/68 via-white/12 to-[#4D148C]/18" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#101d48]/38 via-transparent to-white/8" />
 
                       <div className="absolute left-5 top-5 max-w-[250px] rounded-2xl border border-white/90 bg-white/96 p-4 shadow-2xl backdrop-blur-xl">
-                        <div className="flex items-center gap-2"><Box className="h-4 w-4 text-[#4D148C]" /><span className="text-[10px] font-black text-[#183066]">Track Your Shipment</span><span className="ml-auto rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-black text-emerald-700">Live</span></div>
+                        <div className="flex items-center gap-2"><Box className="h-4 w-4 text-[#4D148C]" /><span className="text-[10px] font-black text-[#183066]">Track Your Shipment</span><span className="ml-auto rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-black text-emerald-700">{activeShipment ? "Live" : "Ready"}</span></div>
                         <div className="mt-3 text-sm font-black text-[#14265e]">{activeShipment?.trackingNumber || 'Production workspace'}</div>
                         <div className="mt-1 text-[10px] font-bold text-[#53617d]">{activeShipment ? (activeShipment.sender?.city || 'Origin') + ' → ' + (activeShipment.recipient?.city || 'Destination') : 'Live shipment data appears when available.'}</div>
                       </div>
@@ -187,7 +187,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
                       <div className="absolute bottom-[88px] left-5 right-5 rounded-2xl border border-white/90 bg-white/94 p-4 shadow-2xl backdrop-blur-xl">
                         <div className="flex items-center justify-between gap-3">
-                          <div><div className="text-[9px] font-black uppercase tracking-[.16em] text-[#7a879f]">Air network</div><div className="mt-1 text-sm font-black text-[#14265e]">Flight route visibility</div><div className="mt-1 text-[10px] font-semibold text-[#64728d]">{routeCount ? routeCount + ' live route locations loaded.' : 'Live airport and route data will appear here.'}</div></div>
+                          <div><div className="text-[9px] font-black uppercase tracking-[.16em] text-[#7a879f]">Air network</div><div className="mt-1 text-sm font-black text-[#14265e]">Air network visibility</div><div className="mt-1 text-[10px] font-semibold text-[#64728d]">{routeCount ? routeCount + ' route locations loaded.' : 'Airport and route data will appear here when available.'}</div></div>
                           <div className="relative h-16 w-28 overflow-hidden rounded-xl bg-[#0e255e]">
                             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.25) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.25) 1px,transparent 1px)', backgroundSize: '14px 14px' }} />
                             <span className="absolute left-5 top-8 h-2.5 w-2.5 rounded-full bg-[#ff6600] shadow-[0_0_14px_#ff6600]" />
