@@ -1,19 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowRight, Bell, Box, BriefcaseBusiness, CheckCircle2, ChevronDown, Globe2, Headphones, Menu, Package, Search, ShieldCheck, UserRound, X, Plane } from 'lucide-react';
 import { motion } from 'motion/react';
-import { api } from '../lib/api';
 import { Logo } from '../components/common/Logo';
 
 interface Props { onNavigate: (path: string) => void; }
 
 export const HomePagePremium: React.FC<Props> = ({ onNavigate }) => {
   const [tracking, setTracking] = useState('');
-  const [shipments, setShipments] = useState<any[]>([]);
   const [mobile, setMobile] = useState(false);
-
-  useEffect(() => {
-    api.shipments().then((v:any) => setShipments(Array.isArray(v) ? v.slice(0,6) : (v?.shipments || []).slice(0,6))).catch(()=>{});
-  }, []);
 
   const track = (e:React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +45,7 @@ export const HomePagePremium: React.FC<Props> = ({ onNavigate }) => {
                 <div className="flex gap-2"><div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8795ad]"/><input value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="Enter tracking number" className="h-12 w-full rounded-xl border border-[#d5deeb] bg-[#fbfcff] pl-9 text-sm font-bold outline-none focus:border-[#6d22c8]"/></div><button className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-[#4D148C] to-[#7627d9] text-white"><ArrowRight/></button></div>
               </form>
               <div className="mt-5 grid max-w-[680px] grid-cols-3 gap-2.5">
-                {[[Plane,'24/7','Global support'],[Box,String(shipments.length||'—'),'Live shipments'],[Globe2,'220+','Countries & territories']].map(([I,v,l]:any)=><div key={l} className="rounded-2xl border border-[#dfe5ef] bg-white p-3.5 shadow-sm"><I className="h-4 w-4 text-[#4D148C]"/><div className="mt-2 text-[17px] font-black">{v}</div><div className="text-[9px] font-extrabold text-[#72809b]">{l}</div></div>)}
+                {[[Plane,'24/7','Global support'],[Box,'Live','Shipment tracking'],[Globe2,'220+','Countries & territories']].map(([I,v,l]:any)=><div key={l} className="rounded-2xl border border-[#dfe5ef] bg-white p-3.5 shadow-sm"><I className="h-4 w-4 text-[#4D148C]"/><div className="mt-2 text-[17px] font-black">{v}</div><div className="text-[9px] font-extrabold text-[#72809b]">{l}</div></div>)}
               </div>
               <div className="mt-5 flex gap-2.5"><button onClick={()=>onNavigate('/guest-shipping')} className="rounded-xl bg-gradient-to-r from-[#4D148C] to-[#7925dc] px-5 py-3 text-sm font-black text-white shadow-lg">Ship a Package <ArrowRight className="ml-1 inline h-4 w-4 text-[#ff9a5b]"/></button><button onClick={()=>onNavigate('/quote')} className="rounded-xl border border-[#d5deeb] bg-white px-5 py-3 text-sm font-black">Shipping Calculator</button></div>
             </div>
@@ -73,7 +67,7 @@ export const HomePagePremium: React.FC<Props> = ({ onNavigate }) => {
       </div></section>
 
       <section className="mx-auto max-w-[1560px] px-4 pb-9 sm:px-7 lg:px-10"><div className="grid gap-5 xl:grid-cols-[1.3fr_.7fr]">
-        <div className="overflow-hidden rounded-2xl border border-[#dfe5ef] bg-white shadow-sm"><div className="flex items-center justify-between border-b border-[#edf0f5] px-5 py-4"><div><h2 className="text-base font-black">Recent Shipments</h2><p className="text-[10px] font-bold text-[#7b879f]">Live production records.</p></div><button onClick={()=>onNavigate('/dashboard/shipments')} className="text-[10px] font-black text-[#4D148C]">View All →</button></div><div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left text-xs"><thead className="bg-[#fafbfe] text-[9px] font-black uppercase text-[#8a95ab]"><tr><th className="px-5 py-3">Tracking Number</th><th className="px-5 py-3">Destination</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">ETA</th></tr></thead><tbody className="divide-y divide-[#edf0f5]">{shipments.length?shipments.map(s=><tr key={s.id}><td className="px-5 py-3 font-black">{s.trackingNumber||'Pending'}</td><td className="px-5 py-3 font-semibold text-[#5e6c88]">{s.recipient?.city||s.recipient?.country||'—'}</td><td className="px-5 py-3 font-bold">{s.status||'Processing'}</td><td className="px-5 py-3">{s.estimatedDelivery||'—'}</td></tr>):<tr><td colSpan={4} className="px-5 py-12 text-center"><Package className="mx-auto h-7 w-7 text-[#4D148C]"/><div className="mt-2 text-sm font-black">No production shipments yet</div><div className="text-[11px] font-semibold text-[#7b879f]">Live records appear here after a shipment is created.</div></td></tr>}</tbody></table></div></div>
+        <div className="overflow-hidden rounded-2xl border border-[#dfe5ef] bg-white shadow-sm"><div className="flex items-center justify-between border-b border-[#edf0f5] px-5 py-4"><div><h2 className="text-base font-black">Recent Shipments</h2><p className="text-[10px] font-bold text-[#7b879f]">Live production records.</p></div><button onClick={()=>onNavigate('/dashboard/shipments')} className="text-[10px] font-black text-[#4D148C]">View All →</button></div><div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left text-xs"><thead className="bg-[#fafbfe] text-[9px] font-black uppercase text-[#8a95ab]"><tr><th className="px-5 py-3">Tracking Number</th><th className="px-5 py-3">Destination</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">ETA</th></tr></thead><tbody className="divide-y divide-[#edf0f5]"><tr><td colSpan={4} className="px-5 py-12 text-center"><Package className="mx-auto h-7 w-7 text-[#4D148C]"/><div className="mt-2 text-sm font-black">No production shipments yet</div><div className="text-[11px] font-semibold text-[#7b879f]">This area stays empty until a real shipment is created.</div><button onClick={()=>onNavigate('/guest-shipping')} className="mt-4 rounded-lg bg-[#4D148C] px-4 py-2 text-[10px] font-black text-white">Create a shipment</button></td></tr></tbody></table></div></div>
         <div className="rounded-2xl border border-[#dfe5ef] bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><div className="text-[9px] font-black uppercase tracking-wider text-[#4D148C]">Latest updates</div><h2 className="mt-1 text-base font-black">Shipment timeline</h2></div><ShieldCheck className="h-5 w-5 text-[#4D148C]"/></div><div className="mt-5 space-y-4">{['Label created','Picked up','In transit','Out for delivery'].map((x,i)=><div key={x} className="flex gap-3"><span className={'grid h-7 w-7 shrink-0 place-items-center rounded-full '+(i===0?'bg-[#4D148C] text-white':'bg-[#eef2f7] text-[#8994aa]')}><CheckCircle2 className="h-3.5 w-3.5"/></span><div><div className="text-xs font-black">{x}</div><div className="text-[10px] font-semibold text-[#7b879f]">Global network · real-time visibility</div></div></div>)}</div></div>
       </div></section>
 
