@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Activity, ArrowRight, Bell, Box, BriefcaseBusiness, CheckCircle2, ChevronDown,
   ChevronRight, CircleHelp, Clock3, Globe2, Headphones, Layers3,
@@ -12,21 +12,21 @@ import { Logo } from '../components/common/Logo';
 interface HomePageProps { onNavigate: (path: string) => void; }
 
 const nav = [
-  ['Dashboard', Box, '/'],
-  ['Ship a Package', Package, '/guest-shipping'],
-  ['Track Shipment', Search, '/track'],
-  ['International', Globe2, '/services/international'],
-  ['Services', Layers3, '/services'],
-  ['My Shipments', Box, '/dashboard/shipments'],
-  ['Business Solutions', BriefcaseBusiness, '/business'],
-  ['Support', CircleHelp, '/support'],
+  ['Dashboard', Box, '/', false],
+  ['Ship a Package', Package, '/guest-shipping', false],
+  ['Track Shipment', Search, '/track', false],
+  ['My Shipments', Box, '/dashboard/shipments', false],
+  ['International', Globe2, '/services/international', true],
+  ['Services', Layers3, '/services', true],
+  ['Business Solutions', BriefcaseBusiness, '/business', true],
+  ['Support', CircleHelp, '/support', true],
 ] as const;
 
 const services = [
-  ['Ship a Package', 'Request a shipment and get a live production rate.', Package, '/guest-shipping', LOGISTICS_IMAGES.distributionHub],
-  ['International', 'Worldwide delivery and cross-border support.', Globe2, '/services/international', LOGISTICS_IMAGES.containerShip],
-  ['Business Solutions', 'Structured logistics tools for growing teams.', BriefcaseBusiness, '/business', LOGISTICS_IMAGES.supplyChainAnalytics],
-  ['Support', 'Payment proof, questions and fast communication.', Headphones, '/support', LOGISTICS_IMAGES.courierHandingPackage],
+  ['Air Express', 'Fast international air delivery for time-critical shipments.', Plane, '/services/international', LOGISTICS_IMAGES.heroAircraft],
+  ['International Shipping', 'Worldwide door-to-door shipping and cross-border delivery.', Globe2, '/services/international', LOGISTICS_IMAGES.containerShip],
+  ['Freight & Cargo', 'Move larger commercial shipments through the global air network.', Box, '/services', LOGISTICS_IMAGES.distributionHub],
+  ['Business Shipping', 'Centralized shipping, billing and logistics tools for businesses.', BriefcaseBusiness, '/business', LOGISTICS_IMAGES.supplyChainAnalytics],
 ] as const;
 
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
@@ -69,7 +69,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <button onClick={() => onNavigate('/')} aria-label="FedEx home" className="block w-[112px]"><Logo /></button>
           </div>
           <nav className="flex-1 space-y-1.5 p-4 pt-6">
-            {nav.map(([label, Icon, path], index) => (
+            {nav.map(([label, Icon, path, expandable], index) => (
               <motion.button
                 key={label}
                 whileHover={{ x: 3 }}
@@ -80,7 +80,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               >
                 <Icon className={'h-[19px] w-[19px] ' + (index === 0 ? 'text-white' : 'text-[#294180]')} />
                 <span>{label}</span>
-                {(label === 'Services' || label === 'Support') && <ChevronRight className="ml-auto h-4 w-4 opacity-45" />}
+                {expandable && <ChevronRight className="ml-auto h-4 w-4 opacity-45" />}
               </motion.button>
             ))}
           </nav>
@@ -88,8 +88,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <div className="relative min-h-[188px] overflow-hidden rounded-2xl bg-gradient-to-br from-[#4D148C] via-[#7022c8] to-[#ff6600] p-4 text-white shadow-xl">
               <div className="relative z-10">
                 <div className="text-[16px] font-black leading-tight">Global Reach.<br />Local Care.</div>
-                <p className="mt-2 text-[10px] font-semibold leading-4 text-white/85">Shipping, tracking, payment and support in one workspace.</p>
-                <button onClick={() => onNavigate('/services')} className="mt-4 rounded-lg bg-white px-3 py-2 text-[10px] font-black text-[#4D148C]">Explore services <ArrowRight className="ml-1 inline h-3 w-3" /></button>
+                <p className="mt-2 text-[10px] font-semibold leading-4 text-white/85">Air shipping, tracking, pickup, customs and delivery in one workspace.</p>
+                <button onClick={() => onNavigate('/services')} className="mt-4 rounded-lg bg-white px-3 py-2 text-[10px] font-black text-[#4D148C]">Explore shipping <ArrowRight className="ml-1 inline h-3 w-3" /></button>
               </div>
               <Plane className="absolute -bottom-4 -right-3 h-20 w-20 rotate-12 text-white/20" />
             </div>
@@ -187,7 +187,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
                       <div className="absolute bottom-[88px] left-5 right-5 rounded-2xl border border-white/90 bg-white/94 p-4 shadow-2xl backdrop-blur-xl">
                         <div className="flex items-center justify-between gap-3">
-                          <div><div className="text-[9px] font-black uppercase tracking-[.16em] text-[#7a879f]">Network view</div><div className="mt-1 text-sm font-black text-[#14265e]">Route visibility</div><div className="mt-1 text-[10px] font-semibold text-[#64728d]">{routeCount ? routeCount + ' live route locations loaded.' : 'Live route locations will appear here.'}</div></div>
+                          <div><div className="text-[9px] font-black uppercase tracking-[.16em] text-[#7a879f]">Air network</div><div className="mt-1 text-sm font-black text-[#14265e]">Flight route visibility</div><div className="mt-1 text-[10px] font-semibold text-[#64728d]">{routeCount ? routeCount + ' live route locations loaded.' : 'Live airport and route data will appear here.'}</div></div>
                           <div className="relative h-16 w-28 overflow-hidden rounded-xl bg-[#0e255e]">
                             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.25) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.25) 1px,transparent 1px)', backgroundSize: '14px 14px' }} />
                             <span className="absolute left-5 top-8 h-2.5 w-2.5 rounded-full bg-[#ff6600] shadow-[0_0_14px_#ff6600]" />
