@@ -53,7 +53,7 @@ export const HomePagePremium: React.FC<Props> = ({ onNavigate }) => {
             <div className="relative min-h-[510px] overflow-hidden rounded-[30px] border border-white bg-white shadow-[0_30px_90px_rgba(32,53,103,.20)] sm:min-h-[620px]">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(77,20,140,.08),transparent_48%),linear-gradient(180deg,#f9fbff,#edf3fa)]"/>
               <div className="relative z-10 flex h-full min-h-[510px] items-end justify-center sm:min-h-[620px]">
-                <img src="/fedex-hero.webp" alt="FedEx delivery professional holding a package" loading="eager" fetchPriority="high" decoding="async" className="h-full max-h-[760px] w-auto max-w-full object-contain object-bottom brightness-[1.06] contrast-[1.06] saturate-[1.04]"/>
+                <img src="/fedex-hero-live.jpg" alt="FedEx delivery professional holding a package" loading="eager" fetchPriority="high" decoding="async" className="h-full max-h-[760px] w-auto max-w-full object-contain object-bottom brightness-[1.06] contrast-[1.06] saturate-[1.04]"/>
               </div>
             </div>
           </div>
