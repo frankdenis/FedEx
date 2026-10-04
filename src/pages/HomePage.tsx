@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import {
   Activity, ArrowRight, Bell, Box, BriefcaseBusiness, CheckCircle2, ChevronDown,
   ChevronLeft, ChevronRight, CircleHelp, Clock3, Globe2, Headphones, Layers3,
@@ -22,13 +22,6 @@ const nav = [
   ['Support', CircleHelp, '/support'],
 ] as const;
 
-const dashboardViews = [
-  { id: 'overview', eyebrow: 'Operations overview', title: 'Your World', accent: 'Our Priority', copy: 'Fast, reliable and secure shipping solutions for individuals and businesses, anywhere in the world.', label: 'Track Your Shipment', status: 'Live' },
-  { id: 'tracking', eyebrow: 'Live tracking', title: 'Track Every', accent: 'Shipment', copy: 'Follow production shipments through pickup, transit and delivery with a clear, responsive tracking workspace.', label: 'Tracking workspace', status: 'Monitoring' },
-  { id: 'shipping', eyebrow: 'Shipment creation', title: 'Ship With', accent: 'Confidence', copy: 'Request a shipment without an account, calculate a production rate and pay securely before operational review.', label: 'Shipment workflow', status: 'Ready' },
-  { id: 'global', eyebrow: 'Worldwide delivery', title: 'Move Across', accent: 'Borders', copy: 'Connect international services, route support and customer communication from one premium command center.', label: 'Global network', status: 'Connected' },
-];
-
 const services = [
   ['Ship a Package', 'Request a shipment and get a live production rate.', Package, '/guest-shipping', LOGISTICS_IMAGES.distributionHub],
   ['International', 'Worldwide delivery and cross-border support.', Globe2, '/services/international', LOGISTICS_IMAGES.containerShip],
@@ -37,13 +30,11 @@ const services = [
 ] as const;
 
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
-  const [view, setView] = useState(0);
   const [tracking, setTracking] = useState('');
   const [error, setError] = useState('');
   const [shipments, setShipments] = useState<any[]>([]);
   const [site, setSite] = useState<any>({});
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const active = dashboardViews[view];
 
   useEffect(() => {
     Promise.allSettled([api.siteSettings(), api.shipments()]).then(([settings, records]) => {
@@ -69,7 +60,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     onNavigate('/track?q=' + encodeURIComponent(tracking.trim()));
   };
 
-  const changeView = (next: number) => setView((next + dashboardViews.length) % dashboardViews.length);
 
   return (
     <div className="min-h-screen bg-[#f8fbff] text-[#10245e]">
@@ -143,13 +133,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               <div className="relative mx-auto max-w-[1510px] px-4 py-5 sm:px-7 lg:px-9 lg:py-7">
                 <div className="grid gap-6 xl:grid-cols-[.82fr_1.18fr]">
                   <div className="min-w-0 pt-2">
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.div key={active.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .35 }}>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe7f5] bg-white px-3 py-1.5 text-[10px] font-black text-[#355181] shadow-sm"><span className="h-2 w-2 rounded-full bg-[#18b87b]" /> Welcome back · Good Morning</div>
-                        <h1 className="mt-5 text-[46px] font-black leading-[.92] tracking-[-.065em] text-[#0b1f57] sm:text-6xl lg:text-[72px]">{site.headline || active.title}<span className="block bg-gradient-to-r from-[#4D148C] via-[#8c1ee8] to-[#ef3b24] bg-clip-text text-transparent">{site.accent || active.accent}</span></h1>
-                        <p className="mt-5 max-w-[535px] text-[14px] font-bold leading-6 text-[#4d5e82] sm:text-[15px]">{site.copy || active.copy}</p>
-                      </motion.div>
-                    </AnimatePresence>
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe7f5] bg-white px-3 py-1.5 text-[10px] font-black text-[#355181] shadow-sm"><span className="h-2 w-2 rounded-full bg-[#18b87b]" /> Welcome back · Good Morning</div>
+                      <h1 className="mt-5 text-[46px] font-black leading-[.92] tracking-[-.065em] text-[#0b1f57] sm:text-6xl lg:text-[72px]">{site.headline || 'Your World'}<span className="block bg-gradient-to-r from-[#4D148C] via-[#8c1ee8] to-[#ef3b24] bg-clip-text text-transparent">{site.accent || 'Our Priority'}</span></h1>
+                      <p className="mt-5 max-w-[535px] text-[14px] font-bold leading-6 text-[#4d5e82] sm:text-[15px]">{site.copy || 'Fast, reliable and secure shipping solutions for individuals and businesses, anywhere in the world.'}</p>
+                    </div>
 
                     <form onSubmit={track} className="mt-6 rounded-2xl border border-[#d5dfec] bg-white p-3 shadow-[0_18px_45px_rgba(27,46,91,.11)]">
                       <div className="flex items-center gap-2 px-2 pb-2 text-xs font-black text-[#16285f]"><Box className="h-4 w-4 text-[#4D148C]" /> Track Your Shipment</div>
@@ -174,25 +162,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  <div className="relative min-h-[560px] sm:min-h-[650px]">
+                  <div className="relative min-h-[590px] sm:min-h-[660px]">
                     <div className="absolute inset-0 overflow-hidden rounded-[30px] border border-white bg-[#edf5ff] shadow-[0_30px_90px_rgba(32,53,103,.18)]">
-                      <AnimatePresence mode="wait" initial={false}>
-                        <motion.img
-                          key={active.id}
-                          src={site.heroImage || LOGISTICS_IMAGES.heroOperator}
-                          alt="Professional logistics specialist reviewing a shipment on a tablet in a modern distribution center"
-                          className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.08] contrast-[1.06]"
-                          initial={{ opacity: 0, scale: 1.035 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: .55 }}
-                        />
-                      </AnimatePresence>
+                      <img
+                        src={site.heroImage || LOGISTICS_IMAGES.heroOperator}
+                        alt="Professional logistics specialist reviewing a shipment on a tablet in a modern distribution center"
+                        className="absolute inset-0 h-full w-full object-cover object-center brightness-[1.08] saturate-[1.08] contrast-[1.06]"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-r from-white/68 via-white/12 to-[#4D148C]/18" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#101d48]/38 via-transparent to-white/8" />
 
                       <div className="absolute left-5 top-5 max-w-[250px] rounded-2xl border border-white/90 bg-white/96 p-4 shadow-2xl backdrop-blur-xl">
-                        <div className="flex items-center gap-2"><Box className="h-4 w-4 text-[#4D148C]" /><span className="text-[10px] font-black text-[#183066]">{active.label}</span><span className="ml-auto rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-black text-emerald-700">{active.status}</span></div>
+                        <div className="flex items-center gap-2"><Box className="h-4 w-4 text-[#4D148C]" /><span className="text-[10px] font-black text-[#183066]">Track Your Shipment</span><span className="ml-auto rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-black text-emerald-700">Live</span></div>
                         <div className="mt-3 text-sm font-black text-[#14265e]">{activeShipment?.trackingNumber || 'Production workspace'}</div>
                         <div className="mt-1 text-[10px] font-bold text-[#53617d]">{activeShipment ? (activeShipment.sender?.city || 'Origin') + ' → ' + (activeShipment.recipient?.city || 'Destination') : 'Live shipment data appears when available.'}</div>
                       </div>
@@ -220,15 +201,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                         <div className="grid grid-cols-3 gap-3">
                           <div><div className="text-[9px] font-black uppercase tracking-[.12em] text-[#7a879f]">Status</div><div className="mt-1 text-xs font-black text-[#14265e]">{activeShipment?.status || 'Awaiting data'}</div></div>
                           <div><div className="text-[9px] font-black uppercase tracking-[.12em] text-[#7a879f]">Carrier</div><div className="mt-1 text-xs font-black text-[#14265e]">{activeShipment?.carrier || 'FedEx'}</div></div>
-                          <div><div className="text-[9px] font-black uppercase tracking-[.12em] text-[#7a879f]">View</div><div className="mt-1 text-xs font-black text-[#14265e]">{active.id}</div></div>
+                          <div><div className="text-[9px] font-black uppercase tracking-[.12em] text-[#7a879f]">View</div><div className="mt-1 text-xs font-black text-[#14265e]">Overview</div></div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[#dfe5ef] bg-white/96 px-2 py-1.5 shadow-xl">
-                      <button onClick={() => changeView(view - 1)} className="grid h-7 w-7 place-items-center rounded-full text-[#4D148C]" aria-label="Previous dashboard view"><ChevronLeft className="h-4 w-4" /></button>
-                      {dashboardViews.map((s, i) => <button key={s.id} onClick={() => setView(i)} aria-label={'Show ' + s.eyebrow} className={'h-1.5 rounded-full transition-all ' + (i === view ? 'w-8 bg-[#4D148C]' : 'w-2 bg-[#cbd4e3]')} />)}
-                      <button onClick={() => changeView(view + 1)} className="grid h-7 w-7 place-items-center rounded-full text-[#4D148C]" aria-label="Next dashboard view"><ChevronRight className="h-4 w-4" /></button>
                     </div>
                   </div>
                 </div>
