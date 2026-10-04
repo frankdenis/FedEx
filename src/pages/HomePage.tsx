@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Activity, ArrowRight, Bell, Box, BriefcaseBusiness, CheckCircle2, ChevronDown,
-  ChevronLeft, ChevronRight, CircleHelp, Clock3, Globe2, Headphones, Layers3,
+  ChevronRight, CircleHelp, Clock3, Globe2, Headphones, Layers3,
   MapPin, Menu, Package, Plane, Search, ShieldCheck, UserRound, X
 } from 'lucide-react';
 import { api } from '../lib/api';
