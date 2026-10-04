@@ -117,7 +117,7 @@ create table if not exists public.guest_shipping_requests (id uuid primary key d
 create index if not exists guest_requests_email_idx on public.guest_shipping_requests(lower(email));
 create index if not exists guest_requests_status_idx on public.guest_shipping_requests(status,created_at desc);
 create table if not exists public.site_settings (id text primary key,value jsonb not null default '{}'::jsonb,updated_at timestamptz not null default now(),updated_by uuid references auth.users(id) on delete set null);
-insert into public.site_settings(id,value) values ('homepage',jsonb_build_object('headline','Your World','accent','Our Priority','copy','A bright, premium logistics workspace for shipping, tracking and managing deliveries across your global network.','heroImage','https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=2000&q=88')) on conflict (id) do nothing;
+insert into public.site_settings(id,value) values ('homepage',jsonb_build_object('headline','Your World','accent','Our Priority','copy','A bright, premium logistics workspace for shipping, tracking and managing deliveries across your global network.','heroImage','https://images.pexels.com/photos/6169023/pexels-photo-6169023.jpeg?auto=compress&cs=tinysrgb&w=2400')) on conflict (id) do nothing;
 alter table public.guest_shipping_requests enable row level security;
 alter table public.site_settings enable row level security;
 
