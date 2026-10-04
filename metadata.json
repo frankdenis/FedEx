@@ -1,7 +1,12 @@
 {
   "name": "FedEx Global Logistics",
-  "description": "FedEx Global Logistics — Enterprise heavy equipment, global air cargo fleet, automated superhubs, and worldwide freight tracking platform.",
+  "description": "Production-oriented global shipping and logistics platform for shipment creation, tracking, payments, customer support and administration.",
+  "appTitle": "FedEx Global Logistics",
+  "appShortName": "FedEx Logistics",
+  "appDescription": "Ship, track and manage deliveries worldwide from one logistics workspace.",
+  "appIcon": "/app-icon.svg",
+  "websiteTitle": "FedEx Global Logistics — Ship, Track & Deliver Worldwide",
+  "websiteDescription": "Ship, track and manage deliveries worldwide with a responsive global logistics platform.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
-
